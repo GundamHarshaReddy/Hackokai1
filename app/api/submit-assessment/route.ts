@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { dbHelpers } from '@/lib/supabase'
+import { generateCareerRecommendations } from '@/lib/groq'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,20 +9,8 @@ export async function POST(request: NextRequest) {
     // Save student data using server-side service role
     const student = await dbHelpers.insertStudent(studentData)
 
-    // Generate career recommendations
-    const response = await fetch('http://localhost:3000/api/career-recommendations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(studentData),
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to generate career recommendations')
-    }
-
-    const { recommendations } = await response.json()
+    // Generate career recommendations directly instead of making an API call
+    const recommendations = await generateCareerRecommendations(studentData)
 
     return NextResponse.json({
       success: true,
