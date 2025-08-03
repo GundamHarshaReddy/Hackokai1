@@ -3,11 +3,10 @@
 import { useState, useEffect, use } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Download, Plus, Copy, QrCode, Edit, Trash2 } from "lucide-react"
+import { CheckCircle, Plus, Copy, QrCode, Edit, Trash2 } from "lucide-react"
 import { type Job, dbHelpers } from "@/lib/supabase"
-import { downloadQRCode } from "@/lib/qr-generator"
+import { QRCodeComponent } from "@/components/QRCodeComponent"
 import Link from "next/link"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 
 export default function JobSuccessPage({ params }: { params: Promise<{ jobId: string }> }) {
@@ -16,7 +15,6 @@ export default function JobSuccessPage({ params }: { params: Promise<{ jobId: st
   const [job, setJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
-  const [downloading, setDownloading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
 
   useEffect(() => {
@@ -41,20 +39,6 @@ export default function JobSuccessPage({ params }: { params: Promise<{ jobId: st
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
       console.error("Failed to copy:", error)
-    }
-  }
-
-  const handleDownloadQR = async () => {
-    if (!job?.qr_code_url) return
-
-    setDownloading(true)
-    try {
-      await downloadQRCode(job.qr_code_url, `${job.job_id}-qr-code.png`)
-    } catch (error) {
-      console.error("Error downloading QR code:", error)
-      alert("Error downloading QR code. Please try again.")
-    } finally {
-      setDownloading(false)
     }
   }
 
@@ -193,26 +177,17 @@ export default function JobSuccessPage({ params }: { params: Promise<{ jobId: st
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              {job.qr_code_url && (
-                <div className="bg-white p-6 rounded-lg inline-block border-2 border-gray-200">
-                  <Image
-                    src={job.qr_code_url || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMDAgMTUwSDI1MFYyNTBIMjAwVjE1MFoiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+"}
-                    alt="QR Code"
-                    width={256}
-                    height={256}
-                    className="border rounded-lg"
-                  />
-                  <div className="mt-4 text-center">
-                    <p className="font-semibold text-gray-900">{job.job_title}</p>
-                    <p className="text-sm text-gray-600">{job.company_name}</p>
-                    <p className="text-xs text-gray-500 mt-1">Job ID: {job.job_id}</p>
-                  </div>
-                </div>
-              )}
-              <Button onClick={handleDownloadQR} disabled={downloading} className="w-full">
-                <Download className="mr-2 h-4 w-4" />
-                {downloading ? "Downloading..." : "Download QR Code"}
-              </Button>
+              <QRCodeComponent 
+                jobId={job.job_id}
+                size={256}
+                showDownload={true}
+                className="mx-auto"
+              />
+              <div className="text-center">
+                <p className="font-semibold text-gray-900">{job.job_title}</p>
+                <p className="text-sm text-gray-600">{job.company_name}</p>
+                <p className="text-xs text-gray-500 mt-1">Job ID: {job.job_id}</p>
+              </div>
             </CardContent>
           </Card>
 
