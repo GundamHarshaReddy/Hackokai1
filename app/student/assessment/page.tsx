@@ -95,7 +95,12 @@ export default function AssessmentPage() {
   })
 
   const [personalityScores, setPersonalityScores] = useState<Record<string, number>>({})
-  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [recommendations, setRecommendations] = useState<{
+    role: string;
+    match: number;
+    explanation: string;
+    openings: number;
+  }[]>([])
 
   const handleValueToggle = (value: string) => {
     if (selectedValues.includes(value)) {

@@ -46,7 +46,7 @@ export const auth = {
 // Database helpers
 export const db = {
   // Generic CRUD operations
-  select: async (table: string, columns = '*', filters?: Record<string, any>) => {
+  select: async (table: string, columns = '*', filters?: Record<string, unknown>) => {
     let query = supabase.from(table).select(columns)
     
     if (filters) {
@@ -58,11 +58,11 @@ export const db = {
     return await query
   },
 
-  insert: async (table: string, data: any) => {
+  insert: async (table: string, data: Record<string, unknown>) => {
     return await supabase.from(table).insert(data).select()
   },
 
-  update: async (table: string, id: string, data: any) => {
+  update: async (table: string, id: string, data: Record<string, unknown>) => {
     return await supabase.from(table).update(data).eq('id', id).select()
   },
 
@@ -71,12 +71,12 @@ export const db = {
   },
 
   // Batch operations
-  insertMany: async (table: string, data: any[]) => {
+  insertMany: async (table: string, data: Record<string, unknown>[]) => {
     return await supabase.from(table).insert(data).select()
   },
 
   // Real-time subscriptions
-  subscribe: (table: string, callback: (payload: any) => void) => {
+  subscribe: (table: string, callback: (payload: unknown) => void) => {
     return supabase
       .channel(`${table}-changes`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, callback)
@@ -124,20 +124,22 @@ export const storage = {
 }
 
 // Error handling helper
-export const handleSupabaseError = (error: any) => {
+export const handleSupabaseError = (error: unknown) => {
   console.error('Supabase error:', error)
   
-  if (error?.code === 'PGRST116') {
+  const supabaseError = error as { code?: string; message?: string }
+  
+  if (supabaseError?.code === 'PGRST116') {
     return 'Resource not found'
   }
   
-  if (error?.code === '23505') {
+  if (supabaseError?.code === '23505') {
     return 'Resource already exists'
   }
   
-  if (error?.code === 'PGRST301') {
+  if (supabaseError?.code === 'PGRST301') {
     return 'Unauthorized access'
   }
   
-  return error?.message || 'An unexpected error occurred'
+  return supabaseError?.message || 'An unexpected error occurred'
 }

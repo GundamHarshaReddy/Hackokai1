@@ -1,4 +1,5 @@
 import Groq from "groq-sdk"
+import { type Student, type Job } from "./supabase"
 
 // Check if Groq API key is available (server-side only)
 const getGroqApiKey = () => {
@@ -19,7 +20,7 @@ const groq = isGroqConfigured
   : null
 
 // Fallback career recommendations when Groq is not configured
-const generateFallbackRecommendations = (student: any) => {
+const generateFallbackRecommendations = (student: Student) => {
   const { education_degree, specialization, core_values, work_preferences, personality_scores } = student
 
   // Enhanced matching logic based on complete assessment data
@@ -197,15 +198,15 @@ const generateFallbackRecommendations = (student: any) => {
   return recommendations.slice(0, 6) // Return max 6 recommendations
 }
 
-export async function generateStudentSummary(student: any) {
+export async function generateStudentSummary(student: Student) {
   if (!groq) {
     // Enhanced fallback summary generation
     const { name, education_degree, specialization, core_values, work_preferences, personality_scores } = student
     
     // Analyze work preferences
     const highPrefs = Object.entries(work_preferences)
-      .filter(([_, value]) => (value as number) > 70)
-      .map(([key, _]) => {
+      .filter(([, value]) => (value as number) > 70)
+      .map(([key]) => {
         const labels = {
           independence: 'prefers collaborative teamwork',
           structure: 'thrives in flexible environments', 
@@ -218,8 +219,8 @@ export async function generateStudentSummary(student: any) {
 
     // Analyze personality strengths
     const strengths = Object.entries(personality_scores)
-      .filter(([_, value]) => (value as number) >= 4)
-      .map(([key, _]) => {
+      .filter(([, value]) => (value as number) >= 4)
+      .map(([key]) => {
         const traits = {
           openness: 'highly creative and open to new experiences',
           conscientiousness: 'extremely organized and detail-oriented',
@@ -300,7 +301,7 @@ Write in third person, professional tone.`,
   }
 }
 
-export async function calculateFitmentScore(student: any, job: any) {
+export async function calculateFitmentScore(student: Student, job: Job) {
   if (!groq) {
     // Basic fallback scoring logic
     let score = 50 // Base score
@@ -375,22 +376,13 @@ export async function calculateFitmentScore(student: any, job: any) {
   }
 }
 
-export async function generateCareerRecommendations(student: any) {
+export async function generateCareerRecommendations(student: Student) {
   if (!groq) {
     console.log("Groq not configured, using fallback recommendations")
     return generateFallbackRecommendations(student)
   }
 
   try {
-    // Create detailed student profile for AI analysis
-    const workPrefsText = Object.entries(student.work_preferences)
-      .map(([key, value]) => `${key}: ${value}/100`)
-      .join(", ")
-    
-    const personalityText = Object.entries(student.personality_scores)
-      .map(([key, value]) => `${key}: ${value}/5`)
-      .join(", ")
-
     const completion = await groq.chat.completions.create({
       messages: [
         {

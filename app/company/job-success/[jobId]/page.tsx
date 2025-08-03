@@ -20,20 +20,19 @@ export default function JobSuccessPage({ params }: { params: Promise<{ jobId: st
   const [showPreview, setShowPreview] = useState(false)
 
   useEffect(() => {
+    const fetchJob = async () => {
+      try {
+        const job = await dbHelpers.getJobByJobId(resolvedParams.jobId)
+        setJob(job)
+      } catch (error) {
+        console.error("Error fetching job:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
     fetchJob()
   }, [resolvedParams.jobId])
-
-  // Replace the fetchJob function
-  const fetchJob = async () => {
-    try {
-      const job = await dbHelpers.getJobByJobId(resolvedParams.jobId)
-      setJob(job)
-    } catch (error) {
-      console.error("Error fetching job:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -196,10 +195,12 @@ export default function JobSuccessPage({ params }: { params: Promise<{ jobId: st
             <CardContent className="text-center space-y-4">
               {job.qr_code_url && (
                 <div className="bg-white p-6 rounded-lg inline-block border-2 border-gray-200">
-                                    <img
+                  <Image
                     src={job.qr_code_url || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMDAgMTUwSDI1MFYyNTBIMjAwVjE1MFoiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+"}
                     alt="QR Code"
-                    className="w-64 h-64 border rounded-lg"
+                    width={256}
+                    height={256}
+                    className="border rounded-lg"
                   />
                   <div className="mt-4 text-center">
                     <p className="font-semibold text-gray-900">{job.job_title}</p>

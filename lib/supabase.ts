@@ -56,8 +56,8 @@ export interface Database {
           education_degree: string
           specialization: string
           core_values: string[]
-          work_preferences: Record<string, any>
-          personality_scores: Record<string, any>
+          work_preferences: Record<string, number>
+          personality_scores: Record<string, number>
           created_at: string
           updated_at: string
         }
@@ -69,8 +69,8 @@ export interface Database {
           education_degree: string
           specialization: string
           core_values: string[]
-          work_preferences: Record<string, any>
-          personality_scores: Record<string, any>
+          work_preferences: Record<string, number>
+          personality_scores: Record<string, number>
           created_at?: string
           updated_at?: string
         }
@@ -82,8 +82,8 @@ export interface Database {
           education_degree?: string
           specialization?: string
           core_values?: string[]
-          work_preferences?: Record<string, any>
-          personality_scores?: Record<string, any>
+          work_preferences?: Record<string, number>
+          personality_scores?: Record<string, number>
           created_at?: string
           updated_at?: string
         }
@@ -375,7 +375,7 @@ export const dbHelpers = {
     return data || []
   },
 
-  async getJobInterests(jobId: string): Promise<any[]> {
+  async getJobInterests(jobId: string): Promise<StudentJobInterest[]> {
     checkSupabaseConfig()
     const { data, error } = await supabase
       .from("student_job_interests")
@@ -413,7 +413,7 @@ export const dbHelpers = {
       if (interestsResult.error) throw interestsResult.error
 
       const jobTypes =
-        jobsResult.data?.reduce((acc: Record<string, number>, job: any) => {
+        jobsResult.data?.reduce((acc: Record<string, number>, job: { job_type: string }) => {
           acc[job.job_type] = (acc[job.job_type] || 0) + 1
           return acc
         }, {}) || {}

@@ -38,6 +38,7 @@ export default function PostJobPage() {
       return
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
 
     if (isRecording) {
@@ -56,9 +57,10 @@ export default function PostJobPage() {
 
     recognition.onstart = () => {
       console.log("Voice recognition started")
-      alert("🎤 Listening... Please speak all job details clearly. Example: 'My name is John Doe, phone number 9876543210, company TechCorp, job title Software Developer, full-time position, location Bangalore, salary 50000 per month, skills required are JavaScript React Node.js, job description is we need a developer to build web applications'")
+      alert("🎤 Listening... Please speak all job details clearly. Example: &apos;My name is John Doe, phone number 9876543210, company TechCorp, job title Software Developer, full-time position, location Bangalore, salary 50000 per month, skills required are JavaScript React Node.js, job description is we need a developer to build web applications&apos;")
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript
       console.log("Voice input received:", transcript)
@@ -67,6 +69,7 @@ export default function PostJobPage() {
       setIsRecording(false)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (event: any) => {
       console.error("Speech recognition error:", event.error)
       setIsRecording(false)
@@ -478,7 +481,7 @@ export default function PostJobPage() {
                 {voiceTranscript && (
                   <div className="bg-white p-3 rounded border">
                     <p className="text-sm text-gray-600 mb-1">What we heard:</p>
-                    <p className="text-sm italic">"{voiceTranscript}"</p>
+                    <p className="text-sm italic">&ldquo;{voiceTranscript}&rdquo;</p>
                   </div>
                 )}
 
@@ -489,32 +492,32 @@ export default function PostJobPage() {
                     <div>
                       <p className="font-medium text-blue-600">Formal Style:</p>
                       <p className="italic">
-                        "My name is John Smith, phone number is 9876543210. We are TechCorp company and we are hiring
-                        for Software Engineer position."
+                        &ldquo;My name is John Smith, phone number is 9876543210. We are TechCorp company and we are hiring
+                        for Software Engineer position.&rdquo;
                       </p>
                     </div>
 
                     <div>
                       <p className="font-medium text-green-600">Casual Style:</p>
                       <p className="italic">
-                        "Hi, I'm Sarah from ABC Solutions. Call me at 9876543210. We need a web developer for full-time
-                        work in Mumbai."
+                        &ldquo;Hi, I&apos;m Sarah from ABC Solutions. Call me at 9876543210. We need a web developer for full-time
+                        work in Mumbai.&rdquo;
                       </p>
                     </div>
 
                     <div>
                       <p className="font-medium text-purple-600">Business Style:</p>
                       <p className="italic">
-                        "Good morning, this is Mike Johnson representing XYZ Corp. You can reach me at 9876543210. We
-                        have an opening for Data Analyst intern."
+                        &ldquo;Good morning, this is Mike Johnson representing XYZ Corp. You can reach me at 9876543210. We
+                        have an opening for Data Analyst intern.&rdquo;
                       </p>
                     </div>
 
                     <div>
                       <p className="font-medium text-orange-600">Mixed Style:</p>
                       <p className="italic">
-                        "Hello, Mike here from TechStart. Looking for React developer, full-time position in Bangalore.
-                        Contact 9876543210. Need JavaScript, React skills."
+                        &ldquo;Hello, Mike here from TechStart. Looking for React developer, full-time position in Bangalore.
+                        Contact 9876543210. Need JavaScript, React skills.&rdquo;
                       </p>
                     </div>
                   </div>
@@ -530,7 +533,7 @@ export default function PostJobPage() {
             {/* Manual Form Fields */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="contact_name">Contact Person's Name *</Label>
+                <Label htmlFor="contact_name">Contact Person&apos;s Name *</Label>
                 <Input
                   id="contact_name"
                   value={jobData.contact_name}

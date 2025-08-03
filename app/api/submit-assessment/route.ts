@@ -28,13 +28,13 @@ export async function POST(request: NextRequest) {
       student,
       recommendations
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Assessment submission error:', error)
     
     return NextResponse.json(
       { 
         error: 'Failed to submit assessment',
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )

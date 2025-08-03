@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateCareerRecommendations } from '@/lib/groq'
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +51,36 @@ Example response:
 }
 `
 
-    const parsedText = await generateCareerRecommendations(prompt)
+    // Use a simpler approach for voice parsing instead of the career recommendations function
+    const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a voice input parser. Extract job posting information from speech and return only valid JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000,
+      }),
+    })
+
+    if (!aiResponse.ok) {
+      throw new Error('AI parsing failed')
+    }
+
+    const aiData = await aiResponse.json()
+    const parsedText = aiData.choices[0]?.message?.content || ''
 
     console.log('AI Response:', parsedText)
 

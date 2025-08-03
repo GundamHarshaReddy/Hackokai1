@@ -12,7 +12,6 @@ import { generateStudentSummary } from "@/lib/groq"
 
 export default function AdminDashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
-  const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [phoneSearch, setPhoneSearch] = useState("")
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
@@ -34,14 +33,13 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [jobs, students, stats] = await Promise.all([
+      const [jobs, , stats] = await Promise.all([
         dbHelpers.getJobs(),
         dbHelpers.getStudents(),
         dbHelpers.getJobStats(),
       ])
 
       setJobs(jobs)
-      setStudents(students)
       setStats(stats)
     } catch (error) {
       console.error("Error fetching data:", error)

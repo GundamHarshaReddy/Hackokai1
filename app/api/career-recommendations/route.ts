@@ -18,13 +18,13 @@ export async function POST(request: NextRequest) {
       success: true,
       recommendations
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Career recommendations API error:', error)
     
     return NextResponse.json(
       { 
         error: 'Failed to generate career recommendations',
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )

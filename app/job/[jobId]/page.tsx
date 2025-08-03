@@ -18,25 +18,30 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
   const [student, setStudent] = useState<Student | null>(null)
   const [phoneNumber, setPhoneNumber] = useState("")
   const [showPhoneInput, setShowPhoneInput] = useState(true)
-  const [fitmentScore, setFitmentScore] = useState<any>(null)
+  const [fitmentScore, setFitmentScore] = useState<{
+    score: number;
+    reasoning: string;
+    matched_skills: string[];
+    missing_skills: string[];
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [calculating, setCalculating] = useState(false)
   const [expressing, setExpressing] = useState(false)
 
   useEffect(() => {
+    const fetchJob = async () => {
+      try {
+        const job = await dbHelpers.getJobByJobId(resolvedParams.jobId)
+        setJob(job)
+      } catch (error) {
+        console.error("Error fetching job:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
     fetchJob()
   }, [resolvedParams.jobId])
-
-  const fetchJob = async () => {
-    try {
-      const job = await dbHelpers.getJobByJobId(resolvedParams.jobId)
-      setJob(job)
-    } catch (error) {
-      console.error("Error fetching job:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const checkPhoneNumber = async () => {
     if (!phoneNumber.trim()) return
@@ -126,7 +131,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
         <div className="container mx-auto px-4">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Job Not Found</h1>
-            <p className="text-gray-600">The job you're looking for doesn't exist or has been removed.</p>
+            <p className="text-gray-600">The job you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           </div>
         </div>
       </div>
