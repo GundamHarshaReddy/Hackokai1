@@ -79,3 +79,13 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
+
+# Testing
+__tests__/
+*.test.*
+*.spec.*
+test/
+tests/
+cypress/
+playwright/
+.nyc_output
