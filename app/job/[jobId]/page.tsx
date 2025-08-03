@@ -27,24 +27,48 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
   const [loading, setLoading] = useState(true)
   const [calculating, setCalculating] = useState(false)
   const [expressing, setExpressing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchJob = async () => {
       try {
+        // Check if environment variables are available
+        if (typeof window !== 'undefined') {
+          console.log("Environment check:", {
+            supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            supabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          })
+        }
+
         const job = await dbHelpers.getJobByJobId(resolvedParams.jobId)
+        if (!job) {
+          console.error("Job not found for ID:", resolvedParams.jobId)
+          setError(`Job not found for ID: ${resolvedParams.jobId}`)
+        }
         setJob(job)
       } catch (error) {
         console.error("Error fetching job:", error)
+        console.error("Job ID:", resolvedParams.jobId)
+        setError(error instanceof Error ? error.message : "Failed to load job")
       } finally {
         setLoading(false)
       }
     }
     
-    fetchJob()
+    if (resolvedParams?.jobId) {
+      fetchJob()
+    } else {
+      console.error("No job ID provided")
+      setError("No job ID provided")
+      setLoading(false)
+    }
   }, [resolvedParams.jobId])
 
   const checkPhoneNumber = async () => {
-    if (!phoneNumber.trim()) return
+    if (!phoneNumber.trim()) {
+      alert("Please enter a phone number")
+      return
+    }
 
     try {
       const student = await dbHelpers.getStudentByPhone(phoneNumber.trim())
@@ -56,12 +80,16 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
       setShowPhoneInput(false)
     } catch (error) {
       console.error("Error checking phone number:", error)
+      console.error("Phone number:", phoneNumber.trim())
       router.push(`/student/assessment?redirect=/job/${resolvedParams.jobId}&phone=${encodeURIComponent(phoneNumber)}`)
     }
   }
 
   const calculateFitment = async () => {
-    if (!student || !job) return
+    if (!student || !job) {
+      console.error("Missing student or job data:", { student: !!student, job: !!job })
+      return
+    }
 
     setCalculating(true)
     try {
@@ -77,6 +105,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
       })
     } catch (error) {
       console.error("Error calculating fitment:", error)
+      console.error("Student ID:", student?.id)
+      console.error("Job ID:", job?.id)
+      alert("Error calculating fitment score. Please try again.")
     } finally {
       setCalculating(false)
     }
@@ -120,6 +151,22 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
           <div className="text-center">Loading job details...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Job</h1>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     )
