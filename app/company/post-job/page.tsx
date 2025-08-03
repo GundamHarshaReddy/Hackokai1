@@ -56,14 +56,12 @@ export default function PostJobPage() {
     setVoiceTranscript("")
 
     recognition.onstart = () => {
-      console.log("Voice recognition started")
       alert("🎤 Listening... Please speak all job details clearly. Example: &apos;My name is John Doe, phone number 9876543210, company TechCorp, job title Software Developer, full-time position, location Bangalore, salary 50000 per month, skills required are JavaScript React Node.js, job description is we need a developer to build web applications&apos;")
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript
-      console.log("Voice input received:", transcript)
       setVoiceTranscript(transcript)
       parseVoiceInputEnhanced(transcript)
       setIsRecording(false)
@@ -97,8 +95,6 @@ export default function PostJobPage() {
 
   // Enhanced voice parsing with AI-powered field extraction
   const parseVoiceInputEnhanced = async (transcript: string) => {
-    console.log("Parsing enhanced transcript:", transcript)
-    
     try {
       // Use AI to parse the voice input into structured job data
       const response = await fetch('/api/parse-voice-input', {
@@ -111,7 +107,6 @@ export default function PostJobPage() {
 
       if (response.ok) {
         const parsedData = await response.json()
-        console.log("AI parsed data:", parsedData)
         
         // Update job data with AI-parsed results
         setJobData(prev => ({
@@ -142,8 +137,6 @@ export default function PostJobPage() {
   const parseVoiceInputFallback = (transcript: string) => {
     const text = transcript.toLowerCase()
     const updatedJobData = { ...jobData }
-
-    console.log("Using fallback parsing for:", transcript)
 
     // Name extraction (simpler patterns)
     if (!updatedJobData.contact_name) {
@@ -290,7 +283,6 @@ export default function PostJobPage() {
       updatedJobData.job_description = transcript.replace(/my name is.*?(?=job description|description|$)/i, '').trim()
     }
 
-    console.log("Fallback parsed data:", updatedJobData)
     setJobData(updatedJobData)
     alert("📝 Voice input processed! Some fields may need manual review. Please check all details before submitting.")
   }

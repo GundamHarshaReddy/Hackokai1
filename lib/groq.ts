@@ -378,7 +378,6 @@ export async function calculateFitmentScore(student: Student, job: Job) {
 
 export async function generateCareerRecommendations(student: Student) {
   if (!groq) {
-    console.log("Groq not configured, using fallback recommendations")
     return generateFallbackRecommendations(student)
   }
 
@@ -474,16 +473,13 @@ Make each explanation 2-3 sentences that specifically reference their assessment
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed
       } else {
-        console.log("Invalid AI response format, using fallback")
         return generateFallbackRecommendations(student)
       }
     } catch {
-      console.log("Failed to parse AI response, using fallback")
       return generateFallbackRecommendations(student)
     }
   } catch (error) {
     console.error("Groq API error:", error)
-    console.log("API error occurred, using fallback recommendations")
     return generateFallbackRecommendations(student)
   }
 }

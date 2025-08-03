@@ -8,8 +8,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No transcript provided' }, { status: 400 })
     }
 
-    console.log('Parsing voice transcript:', transcript)
-
     // Use AI to parse the voice input into structured job data
     const prompt = `
 You are a voice input parser for a job posting form. Parse the following voice transcript and extract job information into a JSON format. Only extract information that is clearly mentioned. Leave fields empty if not clearly stated.
@@ -82,8 +80,6 @@ Example response:
     const aiData = await aiResponse.json()
     const parsedText = aiData.choices[0]?.message?.content || ''
 
-    console.log('AI Response:', parsedText)
-
     // Try to extract JSON from the response
     let parsedData
     try {
@@ -128,8 +124,6 @@ Example response:
         job_description: extractDescription(transcript),
       }
     }
-
-    console.log('Parsed job data:', parsedData)
 
     return NextResponse.json(parsedData)
   } catch (error) {
