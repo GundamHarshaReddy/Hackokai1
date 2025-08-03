@@ -1,7 +1,10 @@
 export function generateQRCodeURL(jobId: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_BASE_URL environment variable is not set")
+  // Get base URL with proper fallback for production
+  let baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+  
+  // If BASE_URL is not set or is localhost, use production URL
+  if (!baseUrl || baseUrl.includes('localhost')) {
+    baseUrl = 'https://hackokai.vercel.app'
   }
   
   const jobUrl = `${baseUrl}/job/${jobId}`
