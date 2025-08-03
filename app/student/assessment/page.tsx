@@ -101,6 +101,8 @@ export default function AssessmentPage() {
     explanation: string;
     openings: number;
   }[]>([])
+  
+  const [errorMessage, setErrorMessage] = useState<string>("")
 
   const handleValueToggle = (value: string) => {
     if (selectedValues.includes(value)) {
@@ -112,6 +114,8 @@ export default function AssessmentPage() {
 
   const handleSubmit = async () => {
     setLoading(true)
+    setErrorMessage("") // Clear previous error
+    
     try {
       // Save student data
       const studentData = {
@@ -131,7 +135,8 @@ export default function AssessmentPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to submit assessment')
+        const errorData = await response.json()
+        throw new Error(errorData.message || errorData.error || 'Failed to submit assessment')
       }
 
       const { recommendations } = await response.json()
@@ -139,7 +144,8 @@ export default function AssessmentPage() {
       setCurrentStep(5)
     } catch (error) {
       console.error("Error saving assessment:", error)
-      alert("Error saving assessment. Please try again.")
+      const errorMsg = error instanceof Error ? error.message : "Error saving assessment. Please try again."
+      setErrorMessage(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -191,7 +197,10 @@ export default function AssessmentPage() {
                     id="email"
                     type="email"
                     value={basicInfo.email}
-                    onChange={(e) => setBasicInfo({ ...basicInfo, email: e.target.value })}
+                    onChange={(e) => {
+                      setBasicInfo({ ...basicInfo, email: e.target.value })
+                      setErrorMessage("") // Clear error when user modifies email
+                    }}
                     placeholder="your.email@domain.com"
                     required
                   />
@@ -203,7 +212,10 @@ export default function AssessmentPage() {
                 <Input
                   id="phone"
                   value={basicInfo.phone}
-                  onChange={(e) => setBasicInfo({ ...basicInfo, phone: e.target.value })}
+                  onChange={(e) => {
+                    setBasicInfo({ ...basicInfo, phone: e.target.value })
+                    setErrorMessage("") // Clear error when user modifies phone
+                  }}
                   placeholder="Your phone number"
                   required
                 />
@@ -432,6 +444,16 @@ export default function AssessmentPage() {
         </div>
 
         {renderStep()}
+
+        {/* Error Message Display */}
+        {errorMessage && (
+          <div className="max-w-2xl mx-auto mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
+              <p className="text-red-800 text-sm font-medium">{errorMessage}</p>
+            </div>
+          </div>
+        )}
 
         {currentStep < 5 && (
           <div className="flex justify-between max-w-2xl mx-auto mt-8">
