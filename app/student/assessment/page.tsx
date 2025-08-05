@@ -12,6 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Progress } from "@/components/ui/progress"
 import { ArrowLeft, ArrowRight, CheckCircle, Eye, AlertCircle } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useFieldValidation } from "@/hooks/useFieldValidation"
+import { ValidationInput } from "@/components/ValidationInput"
 
 const CORE_VALUES = [
   "Innovation",
@@ -54,23 +56,17 @@ export default function AssessmentPage() {
   const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [isGroqConfigured, setIsGroqConfigured] = useState(true) // Default to true to avoid flash
 
-  // Check Groq configuration on mount
+  // Initialize field validation hook
+  const { validateField, getFieldValidation, cleanup } = useFieldValidation({
+    debounceMs: 800,
+    minLength: 3
+  })
+
+  // Cleanup validation on unmount
   useEffect(() => {
-    const checkGroqStatus = async () => {
-      try {
-        const response = await fetch('/api/groq-status')
-        const data = await response.json()
-        setIsGroqConfigured(data.configured)
-      } catch (error) {
-        console.error('Failed to check Groq status:', error)
-        setIsGroqConfigured(false)
-      }
-    }
-    
-    checkGroqStatus()
-  }, [])
+    return cleanup
+  }, [cleanup])
 
   // Get redirect URL and phone from query params
   const redirectUrl = searchParams.get("redirect")
@@ -92,6 +88,15 @@ export default function AssessmentPage() {
     pace: 50,
     innovation: 50,
     interaction: 50,
+  })
+  
+  // Track which sliders have been interacted with
+  const [touchedSliders, setTouchedSliders] = useState<Record<string, boolean>>({
+    independence: false,
+    structure: false,
+    pace: false,
+    innovation: false,
+    interaction: false,
   })
 
   const [personalityScores, setPersonalityScores] = useState<Record<string, number>>({})
@@ -139,8 +144,14 @@ export default function AssessmentPage() {
         throw new Error(errorData.message || errorData.error || 'Failed to submit assessment')
       }
 
-      const { recommendations } = await response.json()
+      const { recommendations, student } = await response.json()
       setRecommendations(recommendations)
+      
+      // Store student data in sessionStorage for use in opportunities page
+      if (student) {
+        sessionStorage.setItem('currentStudent', JSON.stringify(student))
+      }
+      
       setCurrentStep(5)
     } catch (error) {
       console.error("Error saving assessment:", error)
@@ -156,9 +167,14 @@ export default function AssessmentPage() {
       // Redirect back to the job page
       router.push(redirectUrl)
     } else {
-      // Go to opportunities page
+      // Go to opportunities page with student context
       router.push("/student/opportunities")
     }
+  }
+
+  const handleViewJobsByCareer = (careerType: string) => {
+    // Redirect to opportunities page filtered by career type
+    router.push(`/student/opportunities?careerType=${encodeURIComponent(careerType)}`)
   }
 
   const renderStep = () => {
@@ -169,15 +185,6 @@ export default function AssessmentPage() {
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
               <CardDescription>Tell us about yourself to get started</CardDescription>
-              {!isGroqConfigured && (
-                <div className="flex items-center space-x-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <p className="text-sm text-yellow-800">
-                    <strong>AI Features Limited:</strong> Groq API not configured. Career recommendations will use basic
-                    matching.
-                  </p>
-                </div>
-              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -191,35 +198,35 @@ export default function AssessmentPage() {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={basicInfo.email}
-                    onChange={(e) => {
-                      setBasicInfo({ ...basicInfo, email: e.target.value })
-                      setErrorMessage("") // Clear error when user modifies email
-                    }}
-                    placeholder="your.email@domain.com"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  value={basicInfo.phone}
-                  onChange={(e) => {
-                    setBasicInfo({ ...basicInfo, phone: e.target.value })
-                    setErrorMessage("") // Clear error when user modifies phone
+                <ValidationInput
+                  id="email"
+                  label="Email Address"
+                  type="email"
+                  value={basicInfo.email}
+                  onChange={(value) => {
+                    setBasicInfo({ ...basicInfo, email: value })
+                    setErrorMessage("") // Clear error when user modifies email
+                    validateField('email', value)
                   }}
-                  placeholder="Your phone number"
+                  placeholder="your.email@domain.com"
                   required
+                  validation={getFieldValidation('email')}
                 />
               </div>
+
+              <ValidationInput
+                id="phone"
+                label="Phone Number"
+                value={basicInfo.phone}
+                onChange={(value) => {
+                  setBasicInfo({ ...basicInfo, phone: value })
+                  setErrorMessage("") // Clear error when user modifies phone
+                  validateField('phone', value)
+                }}
+                placeholder="Your phone number"
+                required
+                validation={getFieldValidation('phone')}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -307,12 +314,17 @@ export default function AssessmentPage() {
                   <Label className="text-sm font-medium">{pref.label}</Label>
                   <Slider
                     value={[workPreferences[pref.key]]}
-                    onValueChange={(value) =>
+                    onValueChange={(value) => {
                       setWorkPreferences({
                         ...workPreferences,
                         [pref.key]: value[0],
                       })
-                    }
+                      // Mark this slider as touched/interacted with
+                      setTouchedSliders({
+                        ...touchedSliders,
+                        [pref.key]: true,
+                      })
+                    }}
                     max={100}
                     step={1}
                     className="w-full"
@@ -370,11 +382,6 @@ export default function AssessmentPage() {
               <CardTitle className="text-2xl">Your Career Recommendations</CardTitle>
               <CardDescription>
                 Based on your assessment, here are your top career matches
-                {!isGroqConfigured && (
-                  <div className="mt-2 text-yellow-600 text-sm">
-                    ⚠️ Using basic matching algorithm. Configure Groq API for AI-powered recommendations.
-                  </div>
-                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -394,7 +401,7 @@ export default function AssessmentPage() {
                       <p className="text-sm text-gray-600 mb-3">{rec.explanation}</p>
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-blue-600">{rec.openings} openings available</span>
-                        <Button size="sm" onClick={handleCompleteAssessment}>
+                        <Button size="sm" onClick={() => handleViewJobsByCareer(rec.role)}>
                           <Eye className="mr-1 h-3 w-3" />
                           View Jobs
                         </Button>
@@ -420,11 +427,23 @@ export default function AssessmentPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return Object.values(basicInfo).every((value) => value.trim() !== "")
+        // Check basic info completeness
+        const basicInfoComplete = Object.values(basicInfo).every((value) => value.trim() !== "")
+        if (!basicInfoComplete) return false
+        
+        // Check if email and phone are valid
+        const emailValid = getFieldValidation('email')?.isValid
+        const phoneValid = getFieldValidation('phone')?.isValid
+        if (!emailValid || !phoneValid) return false
+        
+        return true
       case 2:
         return selectedValues.length === 5
       case 3:
-        return true
+        // Check if user has interacted with ALL work preference sliders
+        const allSlidersInteracted = Object.values(touchedSliders).every(touched => touched === true)
+        
+        return allSlidersInteracted
       case 4:
         return Object.keys(personalityScores).length === PERSONALITY_QUESTIONS.length
       default:

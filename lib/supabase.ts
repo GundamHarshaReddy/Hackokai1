@@ -1,436 +1,343 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Check if we're in a server environment without env vars
-const isServer = typeof window === 'undefined'
-const hasValidEnvVars = supabaseUrl && supabaseAnonKey
-
-if (!hasValidEnvVars && !isServer) {
-  console.warn('Missing Supabase environment variables. Please check your .env.local file.')
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables. Please check your .env.local file.')
 }
 
-// Create Supabase client with fallback values for SSR
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
-    }
-  }
-)
-
-// Create admin client for server-side operations (bypasses RLS)
-export const supabaseAdmin = isServer && supabaseUrl && supabaseServiceKey 
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-  : null
-
-// Runtime check for valid configuration
-const checkSupabaseConfig = () => {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Missing Supabase environment variables. Please check your .env.local file.')
-  }
+if (supabaseUrl.includes('your_supabase_project_url_here')) {
+  throw new Error('Please update NEXT_PUBLIC_SUPABASE_URL with your actual Supabase project URL in .env.local')
 }
 
-// Database Types based on your complete schema
-export interface Database {
-  public: {
-    Tables: {
-      students: {
-        Row: {
-          id: string
-          name: string
-          email: string
-          phone: string
-          education_degree: string
-          specialization: string
-          core_values: string[]
-          work_preferences: Record<string, number>
-          personality_scores: Record<string, number>
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          email: string
-          phone: string
-          education_degree: string
-          specialization: string
-          core_values: string[]
-          work_preferences: Record<string, number>
-          personality_scores: Record<string, number>
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          email?: string
-          phone?: string
-          education_degree?: string
-          specialization?: string
-          core_values?: string[]
-          work_preferences?: Record<string, number>
-          personality_scores?: Record<string, number>
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      jobs: {
-        Row: {
-          id: string
-          job_id: string
-          contact_name: string
-          contact_number: string
-          company_name: string
-          job_title: string
-          job_type: string
-          job_description: string
-          location: string | null
-          salary_stipend: string | null
-          key_skills: string[] | null
-          qr_code_url: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          contact_name: string
-          contact_number: string
-          company_name: string
-          job_title: string
-          job_type: string
-          job_description: string
-          location?: string | null
-          salary_stipend?: string | null
-          key_skills?: string[] | null
-          qr_code_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          contact_name?: string
-          contact_number?: string
-          company_name?: string
-          job_title?: string
-          job_type?: string
-          job_description?: string
-          location?: string | null
-          salary_stipend?: string | null
-          key_skills?: string[] | null
-          qr_code_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      student_job_interests: {
-        Row: {
-          id: string
-          student_id: string
-          job_id: string
-          fitment_score: number | null
-          is_interested: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          student_id: string
-          job_id: string
-          fitment_score?: number | null
-          is_interested?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          student_id?: string
-          job_id?: string
-          fitment_score?: number | null
-          is_interested?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      users: {
-        Row: {
-          id: string
-          email: string
-          full_name: string | null
-          avatar_url: string | null
-          role: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          email: string
-          full_name?: string | null
-          avatar_url?: string | null
-          role?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          full_name?: string | null
-          avatar_url?: string | null
-          role?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
-    }
-  }
+if (supabaseAnonKey.includes('your_supabase_anon_key_here')) {
+  throw new Error('Please update NEXT_PUBLIC_SUPABASE_ANON_KEY with your actual Supabase anon key in .env.local')
 }
 
-// Type helpers
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
-export type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
-export type TablesUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Typed interfaces that match the database schema
-export type Student = Tables<'students'>
-export type Job = Tables<'jobs'>
-export type StudentJobInterest = Tables<'student_job_interests'>
-export type User = Tables<'users'>
+// Database Types
+export interface Student {
+  id: string
+  name: string
+  email: string
+  phone: string // 10-digit Indian phone number
+  education_degree: string
+  specialization: string
+  core_values: string[]
+  work_preferences: {
+    independence: number
+    structure: number
+    pace: number
+    innovation: number
+    interaction: number
+  }
+  personality_scores: {
+    [key: string]: number
+  }
+  created_at: string
+  updated_at: string
+}
 
-// Insert types for forms
-export type StudentInsert = TablesInsert<'students'>
-export type JobInsert = TablesInsert<'jobs'>
-export type StudentJobInterestInsert = TablesInsert<'student_job_interests'>
+export interface CareerRecommendation {
+  id: string
+  student_id: string
+  role: string
+  match_score: number
+  fitment_score: number // Add this for backward compatibility
+  explanation: string
+  job_openings: number
+  created_at: string
+}
 
-// Database helper functions
-export const dbHelpers = {
-  // Job operations
-  async insertJob(job: JobInsert): Promise<Job> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("jobs").insert([job]).select().single()
+export interface Job {
+  id: string
+  company_name: string
+  job_title: string
+  job_description: string
+  location: string
+  job_type: string
+  key_skills: string[]
+  created_at: string
+  updated_at: string
+}
 
-    if (error) {
-      console.error("Database error inserting job:", error)
-      throw new Error(`Failed to create job: ${error.message}`)
-    }
-    return data
-  },
+export interface JobApplication {
+  id: string
+  student_id: string
+  job_id: string
+  phone: string
+  status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected'
+  created_at: string
+}
 
-  async getJobs(): Promise<Job[]> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("jobs").select("*").order("created_at", { ascending: false })
+export interface CareerInterest {
+  id: string
+  student_id: string
+  career_role: string
+  created_at: string
+}
 
-    if (error) {
-      console.error("Database error fetching jobs:", error)
-      throw new Error(`Failed to fetch jobs: ${error.message}`)
-    }
-    return data || []
-  },
+export interface JobInterest {
+  id: string
+  student_id: string
+  job_id: string
+  created_at: string
+}
 
-  async getJobByJobId(jobId: string): Promise<Job | null> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("jobs").select("*").eq("job_id", jobId).single()
-
-    if (error) {
-      if (error.code === "PGRST116") return null // Not found
-      console.error("Database error fetching job by job_id:", error)
-      throw new Error(`Failed to fetch job: ${error.message}`)
-    }
-    return data
-  },
-
-  async getJobById(id: string): Promise<Job | null> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("jobs").select("*").eq("id", id).single()
-
-    if (error) {
-      if (error.code === "PGRST116") return null // Not found
-      console.error("Database error fetching job by id:", error)
-      throw new Error(`Failed to fetch job: ${error.message}`)
-    }
-    return data
-  },
-
-  async deleteJob(id: string): Promise<void> {
-    checkSupabaseConfig()
-    const { error } = await supabase.from("jobs").delete().eq("id", id)
-
-    if (error) {
-      console.error("Database error deleting job:", error)
-      throw new Error(`Failed to delete job: ${error.message}`)
-    }
-  },
-
+// Database Functions
+export const dbOperations = {
   // Student operations
-  async insertStudent(student: StudentInsert): Promise<Student> {
-    checkSupabaseConfig()
-    
-    // Ensure the data is properly formatted
-    const studentData = {
-      ...student,
-      core_values: Array.isArray(student.core_values) ? student.core_values : [],
-      work_preferences: typeof student.work_preferences === 'object' ? student.work_preferences : {},
-      personality_scores: typeof student.personality_scores === 'object' ? student.personality_scores : {}
-    }
-
-    // Use admin client to bypass RLS when inserting students
-    const client = supabaseAdmin || supabase
-    const { data, error } = await client.from("students").insert([studentData]).select().single()
-
-    if (error) {
-      console.error("Database error inserting student:", error)
-      throw new Error(`Failed to create student profile: ${error.message}`)
-    }
-    return data
-  },
-
-  async getStudents(): Promise<Student[]> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Database error fetching students:", error)
-      throw new Error(`Failed to fetch students: ${error.message}`)
-    }
-    return data || []
-  },
-
-  async getStudentByPhone(phone: string): Promise<Student | null> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("students").select("*").eq("phone", phone).single()
-
-    if (error) {
-      if (error.code === "PGRST116") return null // Not found
-      console.error("Database error fetching student by phone:", error)
-      throw new Error(`Failed to fetch student: ${error.message}`)
-    }
-    return data
-  },
-
-  async getStudentByEmail(email: string): Promise<Student | null> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("students").select("*").eq("email", email).single()
-
-    if (error) {
-      if (error.code === "PGRST116") return null // Not found
-      console.error("Database error fetching student by email:", error)
-      throw new Error(`Failed to fetch student: ${error.message}`)
-    }
-    return data
-  },
-
-  async getStudentById(id: string): Promise<Student | null> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("students").select("*").eq("id", id).single()
-
-    if (error) {
-      if (error.code === "PGRST116") return null // Not found
-      console.error("Database error fetching student by id:", error)
-      throw new Error(`Failed to fetch student: ${error.message}`)
-    }
-    return data
-  },
-
-  // Student job interest operations
-  async upsertStudentJobInterest(interest: StudentJobInterestInsert): Promise<StudentJobInterest> {
-    checkSupabaseConfig()
+  async createStudent(studentData: Omit<Student, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase
-      .from("student_job_interests")
-      .upsert([interest], {
-        onConflict: "student_id,job_id",
-        ignoreDuplicates: false,
-      })
+      .from('students')
+      .insert([studentData])
       .select()
       .single()
-
-    if (error) {
-      console.error("Database error upserting student job interest:", error)
-      throw new Error(`Failed to save interest: ${error.message}`)
-    }
+    
+    if (error) throw error
     return data
   },
 
-  async getStudentJobInterests(studentId: string): Promise<StudentJobInterest[]> {
-    checkSupabaseConfig()
-    const { data, error } = await supabase.from("student_job_interests").select("*").eq("student_id", studentId)
-
-    if (error) {
-      console.error("Database error fetching student interests:", error)
-      throw new Error(`Failed to fetch student interests: ${error.message}`)
-    }
-    return data || []
-  },
-
-  async getJobInterests(jobId: string): Promise<StudentJobInterest[]> {
-    checkSupabaseConfig()
+  async getStudentByEmail(email: string) {
     const { data, error } = await supabase
-      .from("student_job_interests")
-      .select(`
-        *,
-        students (
-          name,
-          email,
-          phone,
-          education_degree,
-          specialization
-        )
-      `)
-      .eq("job_id", jobId)
-
-    if (error) {
-      console.error("Database error fetching job interests:", error)
-      throw new Error(`Failed to fetch job interests: ${error.message}`)
-    }
-    return data || []
+      .from('students')
+      .select('*')
+      .eq('email', email)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') throw error // PGRST116 = no rows returned
+    return data
   },
 
-  // Analytics
-  async getJobStats() {
-    checkSupabaseConfig()
-    try {
-      const [jobsResult, studentsResult, interestsResult] = await Promise.all([
-        supabase.from("jobs").select("job_type", { count: "exact" }),
-        supabase.from("students").select("id", { count: "exact" }),
-        supabase.from("student_job_interests").select("is_interested", { count: "exact" }).eq("is_interested", true),
-      ])
-
-      if (jobsResult.error) throw jobsResult.error
-      if (studentsResult.error) throw studentsResult.error
-      if (interestsResult.error) throw interestsResult.error
-
-      const jobTypes =
-        jobsResult.data?.reduce((acc: Record<string, number>, job: { job_type: string }) => {
-          acc[job.job_type] = (acc[job.job_type] || 0) + 1
-          return acc
-        }, {}) || {}
-
-      return {
-        totalJobs: jobsResult.count || 0,
-        totalStudents: studentsResult.count || 0,
-        totalInterests: interestsResult.count || 0,
-        internships: jobTypes["Internship"] || 0,
-        fullTime: jobTypes["Full-Time"] || 0,
-        partTime: jobTypes["Part-Time"] || 0,
-        freelance: jobTypes["Freelance"] || 0,
-        contract: jobTypes["Contract"] || 0,
-      }
-    } catch (error) {
-      console.error("Database error fetching stats:", error)
-      throw new Error(`Failed to fetch statistics: ${error}`)
-    }
+  async getStudentByPhone(phone: string) {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('phone', phone)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') throw error
+    return data
   },
+
+  async getStudentById(id: string) {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  async updateStudent(id: string, updates: Partial<Student>) {
+    const { data, error } = await supabase
+      .from('students')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  // Career recommendation operations
+  async saveCareerRecommendations(studentId: string, recommendations: Omit<CareerRecommendation, 'id' | 'student_id' | 'created_at'>[]) {
+    const recommendationsWithStudentId = recommendations.map(rec => ({
+      ...rec,
+      student_id: studentId
+    }))
+
+    const { data, error } = await supabase
+      .from('career_recommendations')
+      .insert(recommendationsWithStudentId)
+      .select()
+    
+    if (error) throw error
+    return data
+  },
+
+  async getCareerRecommendations(studentId: string) {
+    const { data, error } = await supabase
+      .from('career_recommendations')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('match_score', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  // Job operations
+  async createJob(jobData: Omit<Job, 'id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert([jobData])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  async getJobs() {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  async getJobById(id: string) {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  async deleteJob(id: string) {
+    const { error } = await supabase
+      .from('jobs')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+    return { success: true }
+  },
+
+  async getJobsByCareer(careerType: string) {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .ilike('job_title', `%${careerType}%`)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  // Job application operations
+  async createJobApplication(applicationData: Omit<JobApplication, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('job_applications')
+      .insert([applicationData])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  async getJobApplications(studentId?: string, jobId?: string) {
+    let query = supabase.from('job_applications').select(`
+      *,
+      students:student_id(*),
+      jobs:job_id(*)
+    `)
+    
+    if (studentId) query = query.eq('student_id', studentId)
+    if (jobId) query = query.eq('job_id', jobId)
+    
+    const { data, error } = await query.order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  // Admin operations
+  async getAllStudents() {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  async searchStudentsByPhone(phone: string) {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .ilike('phone', `%${phone}%`)
+    
+    if (error) throw error
+    return data
+  },
+
+  // Career interests operations
+  async addCareerInterest(studentId: string, careerRole: string) {
+    const { data, error } = await supabase
+      .from('career_interests')
+      .insert({
+        student_id: studentId,
+        career_role: careerRole
+      })
+      .select()
+    
+    if (error) throw error
+    return data
+  },
+
+  async removeCareerInterest(studentId: string, careerRole: string) {
+    const { error } = await supabase
+      .from('career_interests')
+      .delete()
+      .match({ student_id: studentId, career_role: careerRole })
+    
+    if (error) throw error
+  },
+
+  async getCareerInterests(studentId: string) {
+    const { data, error } = await supabase
+      .from('career_interests')
+      .select('*')
+      .eq('student_id', studentId)
+    
+    if (error) throw error
+    return data
+  },
+
+  // Job interests operations
+  async addJobInterest(studentId: string, jobId: string) {
+    const { data, error } = await supabase
+      .from('job_interests')
+      .insert({
+        student_id: studentId,
+        job_id: jobId
+      })
+      .select()
+    
+    if (error) throw error
+    return data
+  },
+
+  async removeJobInterest(studentId: string, jobId: string) {
+    const { error } = await supabase
+      .from('job_interests')
+      .delete()
+      .match({ student_id: studentId, job_id: jobId })
+    
+    if (error) throw error
+  },
+
+  async getJobInterests(studentId: string) {
+    const { data, error } = await supabase
+      .from('job_interests')
+      .select('*')
+      .eq('student_id', studentId)
+    
+    if (error) throw error
+    return data
+  }
 }

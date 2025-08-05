@@ -18,6 +18,10 @@ export default function PostJobPage() {
   const [loading, setLoading] = useState(false)
   const [keySkillInput, setKeySkillInput] = useState("")
   const [voiceTranscript, setVoiceTranscript] = useState("")
+  const [currentField, setCurrentField] = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [recognitionRef, setRecognitionRef] = useState<any>(null)
+  const [interimText, setInterimText] = useState("")
 
   const [jobData, setJobData] = useState({
     contact_name: "",
@@ -31,7 +35,147 @@ export default function PostJobPage() {
     key_skills: [] as string[],
   })
 
-  // Enhanced voice input with field-specific recognition
+  // Enhanced voice input with field-specific recognition and real-time display
+  const startFieldVoiceInput = (fieldName: string) => {
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+      alert("Voice input is not supported in this browser. Please use Chrome, Edge, or Safari.")
+      return
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
+
+    // Stop existing recognition if any
+    if (recognitionRef) {
+      recognitionRef.stop()
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = "en-US"
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.maxAlternatives = 1
+
+    setCurrentField(fieldName)
+    setInterimText("")
+    setRecognitionRef(recognition)
+
+    recognition.onstart = () => {
+      console.log(`Voice recognition started for ${fieldName}`)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      let interimTranscript = ""
+      let finalTranscript = ""
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript
+        } else {
+          interimTranscript += transcript
+        }
+      }
+
+      // Show interim results
+      setInterimText(interimTranscript)
+
+      // Update field with final results
+      if (finalTranscript) {
+        updateFieldFromVoice(fieldName, finalTranscript.trim())
+        setInterimText("")
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error)
+      setCurrentField(null)
+      setInterimText("")
+      if (event.error === "no-speech") {
+        // Don't show alert for no-speech, just stop
+      } else if (event.error === "not-allowed") {
+        alert("Microphone access denied. Please allow microphone access and try again.")
+      }
+    }
+
+    recognition.onend = () => {
+      setCurrentField(null)
+      setInterimText("")
+    }
+
+    try {
+      recognition.start()
+    } catch (error) {
+      console.error("Failed to start recognition:", error)
+      setCurrentField(null)
+      alert("Failed to start voice recognition. Please try again.")
+    }
+  }
+
+  const stopVoiceInput = () => {
+    if (recognitionRef) {
+      recognitionRef.stop()
+    }
+    setCurrentField(null)
+    setInterimText("")
+  }
+
+  const updateFieldFromVoice = (fieldName: string, text: string) => {
+    const processedText = processVoiceTextForField(fieldName, text)
+    
+    setJobData(prev => ({
+      ...prev,
+      [fieldName]: fieldName === 'key_skills' ? 
+        [...prev.key_skills, ...processedText.split(',').map(s => s.trim()).filter(s => s)] :
+        processedText
+    }))
+  }
+
+  const processVoiceTextForField = (fieldName: string, text: string): string => {
+    switch (fieldName) {
+      case 'contact_number': {
+        // Extract and format phone numbers
+        const phoneMatch = text.match(/[\d\s\-+()]{8,}/g)
+        return phoneMatch ? phoneMatch[0].replace(/\s+/g, '') : text
+      }
+      case 'salary_stipend': {
+        // Format salary mentions
+        return text.replace(/(\d+)\s*(thousand|k|lakh|crore)/gi, (match, num, unit) => {
+          const lowerUnit = unit.toLowerCase()
+          let multiplier = ''
+          if (lowerUnit.startsWith('th') || lowerUnit === 'k') {
+            multiplier = '000'
+          } else if (lowerUnit.startsWith('l')) {
+            multiplier = '00000'
+          } else {
+            multiplier = '0000000'
+          }
+          return num + multiplier
+        })
+      }
+      case 'job_type': {
+        // Normalize job types
+        const jobTypeMap: { [key: string]: string } = {
+          'full time': 'full-time',
+          'part time': 'part-time',
+          'intern': 'internship',
+          'contract': 'contract'
+        }
+        const lowerText = text.toLowerCase()
+        for (const [key, value] of Object.entries(jobTypeMap)) {
+          if (lowerText.includes(key)) return value
+        }
+        return text
+      }
+      default:
+        return text
+    }
+  }
+
+  // Enhanced voice parsing with AI-powered field extraction
+  // Legacy voice input function for full form filling
   const handleVoiceInput = () => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
       alert("Voice input is not supported in this browser. Please use Chrome, Edge, or Safari.")
@@ -48,7 +192,7 @@ export default function PostJobPage() {
 
     const recognition = new SpeechRecognition()
     recognition.lang = "en-US"
-    recognition.continuous = true  // Allow longer speech
+    recognition.continuous = true
     recognition.interimResults = false
     recognition.maxAlternatives = 1
 
@@ -56,7 +200,8 @@ export default function PostJobPage() {
     setVoiceTranscript("")
 
     recognition.onstart = () => {
-      alert("🎤 Listening... Please speak all job details clearly. Example: &apos;My name is John Doe, phone number 9876543210, company TechCorp, job title Software Developer, full-time position, location Bangalore, salary 50000 per month, skills required are JavaScript React Node.js, job description is we need a developer to build web applications&apos;")
+      console.log("Voice recognition started")
+      alert("🎤 Listening for full job details... Speak all information and we'll fill out the form automatically!")
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,7 +251,8 @@ export default function PostJobPage() {
       })
 
       if (response.ok) {
-        const parsedData = await response.json()
+        const result = await response.json()
+        const parsedData = result.data || result // Handle both new and old response formats
         
         // Update job data with AI-parsed results
         setJobData(prev => ({
@@ -337,7 +483,12 @@ export default function PostJobPage() {
       }
 
       // Navigate to success page with the job ID
-      router.push(`/company/job-success/${result.job.job_id}`)
+      const jobId = result.job_id || result.job?.id
+      if (jobId) {
+        router.push(`/company/job-success/${jobId}`)
+      } else {
+        throw new Error('Job ID not returned from server')
+      }
     } catch (error) {
       console.error("Error posting job:", error)
       alert("Error posting job. Please try again.")
@@ -437,14 +588,27 @@ export default function PostJobPage() {
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg flex items-center">
                   <Volume2 className="mr-2 h-5 w-5" />
-                  Flexible Voice Input
+                  Dynamic Voice Input
                 </CardTitle>
                 <CardDescription>
-                  Speak naturally in any format! Our system understands different ways of expressing the same
-                  information.
+                  Click the microphone icon next to any field to speak directly into that field. 
+                  Watch as your words appear in real-time!
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="text-xs text-gray-600 bg-white p-3 rounded border">
+                  <p className="font-medium mb-2">🎯 How it works:</p>
+                  <ul className="space-y-1 list-disc list-inside">
+                    <li><strong>Field-specific:</strong> Click the mic button next to any field to speak directly into it</li>
+                    <li><strong>Real-time:</strong> See your words appear as you speak with live transcription</li>
+                    <li><strong>Smart processing:</strong> Automatically formats phone numbers, salaries, and job types</li>
+                    <li><strong>Easy control:</strong> Click the red mic button to stop recording at any time</li>
+                  </ul>
+                  <p className="mt-2 text-xs text-blue-600">
+                    💡 Pro tip: Speak clearly and pause between words for better accuracy!
+                  </p>
+                </div>
+
                 <div className="flex space-x-4">
                   <Button
                     type="button"
@@ -461,7 +625,7 @@ export default function PostJobPage() {
                     ) : (
                       <>
                         <Mic className="mr-2 h-4 w-4" />
-                        Start Voice Input
+                        Start Full Voice Input
                       </>
                     )}
                   </Button>
@@ -476,123 +640,181 @@ export default function PostJobPage() {
                     <p className="text-sm italic">&ldquo;{voiceTranscript}&rdquo;</p>
                   </div>
                 )}
-
-                <div className="text-xs text-gray-600 bg-white p-3 rounded border">
-                  <p className="font-medium mb-2">💡 You can speak in ANY of these ways:</p>
-
-                  <div className="space-y-2">
-                    <div>
-                      <p className="font-medium text-blue-600">Formal Style:</p>
-                      <p className="italic">
-                        &ldquo;My name is John Smith, phone number is 9876543210. We are TechCorp company and we are hiring
-                        for Software Engineer position.&rdquo;
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-green-600">Casual Style:</p>
-                      <p className="italic">
-                        &ldquo;Hi, I&apos;m Sarah from ABC Solutions. Call me at 9876543210. We need a web developer for full-time
-                        work in Mumbai.&rdquo;
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-purple-600">Business Style:</p>
-                      <p className="italic">
-                        &ldquo;Good morning, this is Mike Johnson representing XYZ Corp. You can reach me at 9876543210. We
-                        have an opening for Data Analyst intern.&rdquo;
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-orange-600">Mixed Style:</p>
-                      <p className="italic">
-                        &ldquo;Hello, Mike here from TechStart. Looking for React developer, full-time position in Bangalore.
-                        Contact 9876543210. Need JavaScript, React skills.&rdquo;
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="mt-2 text-xs text-gray-500">
-                    The system recognizes: names, phone numbers, company names, job titles, locations, salaries, skills,
-                    and job types in any natural speaking style!
-                  </p>
-                </div>
               </CardContent>
             </Card>
 
-            {/* Manual Form Fields */}
+            {/* Manual Form Fields with Voice Input */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="contact_name">Contact Person&apos;s Name *</Label>
-                <Input
-                  id="contact_name"
-                  value={jobData.contact_name}
-                  onChange={(e) => setJobData({ ...jobData, contact_name: e.target.value })}
-                  placeholder="Contact person name"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="contact_name"
+                    value={jobData.contact_name}
+                    onChange={(e) => setJobData({ ...jobData, contact_name: e.target.value })}
+                    placeholder="Contact person name"
+                    required
+                    className={currentField === 'contact_name' ? 'border-blue-400 bg-blue-50' : ''}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={currentField === 'contact_name' ? "destructive" : "outline"}
+                    className="absolute right-1 top-1 h-8 w-8 p-0"
+                    onClick={() => currentField === 'contact_name' ? stopVoiceInput() : startFieldVoiceInput('contact_name')}
+                  >
+                    {currentField === 'contact_name' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                  {currentField === 'contact_name' && interimText && (
+                    <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                      Speaking: {interimText}...
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact_number">Contact Number *</Label>
-                <Input
-                  id="contact_number"
-                  value={jobData.contact_number}
-                  onChange={(e) => setJobData({ ...jobData, contact_number: e.target.value })}
-                  placeholder="Contact phone number"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="contact_number"
+                    value={jobData.contact_number}
+                    onChange={(e) => setJobData({ ...jobData, contact_number: e.target.value })}
+                    placeholder="Contact phone number"
+                    required
+                    className={currentField === 'contact_number' ? 'border-blue-400 bg-blue-50' : ''}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={currentField === 'contact_number' ? "destructive" : "outline"}
+                    className="absolute right-1 top-1 h-8 w-8 p-0"
+                    onClick={() => currentField === 'contact_number' ? stopVoiceInput() : startFieldVoiceInput('contact_number')}
+                  >
+                    {currentField === 'contact_number' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                  {currentField === 'contact_number' && interimText && (
+                    <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                      Speaking: {interimText}...
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="company_name">Company Name *</Label>
-                <Input
-                  id="company_name"
-                  value={jobData.company_name}
-                  onChange={(e) => setJobData({ ...jobData, company_name: e.target.value })}
-                  placeholder="Tech Corp Inc."
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="company_name"
+                    value={jobData.company_name}
+                    onChange={(e) => setJobData({ ...jobData, company_name: e.target.value })}
+                    placeholder="Tech Corp Inc."
+                    required
+                    className={currentField === 'company_name' ? 'border-blue-400 bg-blue-50' : ''}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={currentField === 'company_name' ? "destructive" : "outline"}
+                    className="absolute right-1 top-1 h-8 w-8 p-0"
+                    onClick={() => currentField === 'company_name' ? stopVoiceInput() : startFieldVoiceInput('company_name')}
+                  >
+                    {currentField === 'company_name' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                  {currentField === 'company_name' && interimText && (
+                    <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                      Speaking: {interimText}...
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="job_title">Job Title *</Label>
-                <Input
-                  id="job_title"
-                  value={jobData.job_title}
-                  onChange={(e) => setJobData({ ...jobData, job_title: e.target.value })}
-                  placeholder="Software Engineer Intern"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="job_title"
+                    value={jobData.job_title}
+                    onChange={(e) => setJobData({ ...jobData, job_title: e.target.value })}
+                    placeholder="Software Engineer Intern"
+                    required
+                    className={currentField === 'job_title' ? 'border-blue-400 bg-blue-50' : ''}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={currentField === 'job_title' ? "destructive" : "outline"}
+                    className="absolute right-1 top-1 h-8 w-8 p-0"
+                    onClick={() => currentField === 'job_title' ? stopVoiceInput() : startFieldVoiceInput('job_title')}
+                  >
+                    {currentField === 'job_title' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                  {currentField === 'job_title' && interimText && (
+                    <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                      Speaking: {interimText}...
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="job_type">Job Type *</Label>
-              <Select value={jobData.job_type} onValueChange={(value) => setJobData({ ...jobData, job_type: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select job type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Internship">Internship</SelectItem>
-                  <SelectItem value="Full-Time">Full-Time</SelectItem>
-                  <SelectItem value="Freelance">Freelance</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Select value={jobData.job_type} onValueChange={(value) => setJobData({ ...jobData, job_type: value })}>
+                  <SelectTrigger className={currentField === 'job_type' ? 'border-blue-400 bg-blue-50' : ''}>
+                    <SelectValue placeholder="Select job type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Internship">Internship</SelectItem>
+                    <SelectItem value="Full-Time">Full-Time</SelectItem>
+                    <SelectItem value="Freelance">Freelance</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={currentField === 'job_type' ? "destructive" : "outline"}
+                  className="absolute right-1 top-1 h-8 w-8 p-0"
+                  onClick={() => currentField === 'job_type' ? stopVoiceInput() : startFieldVoiceInput('job_type')}
+                >
+                  {currentField === 'job_type' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                {currentField === 'job_type' && interimText && (
+                  <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700 z-10">
+                    Speaking: {interimText}...
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="job_description">Job Description *</Label>
-              <Textarea
-                id="job_description"
-                value={jobData.job_description}
-                onChange={(e) => setJobData({ ...jobData, job_description: e.target.value })}
-                placeholder="Describe the role, responsibilities, and requirements..."
-                rows={6}
-                required
-              />
+              <div className="relative">
+                <Textarea
+                  id="job_description"
+                  value={jobData.job_description}
+                  onChange={(e) => setJobData({ ...jobData, job_description: e.target.value })}
+                  placeholder="Describe the role, responsibilities, and requirements..."
+                  rows={6}
+                  required
+                  className={currentField === 'job_description' ? 'border-blue-400 bg-blue-50' : ''}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={currentField === 'job_description' ? "destructive" : "outline"}
+                  className="absolute right-2 top-2 h-8 w-8 p-0"
+                  onClick={() => currentField === 'job_description' ? stopVoiceInput() : startFieldVoiceInput('job_description')}
+                >
+                  {currentField === 'job_description' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                {currentField === 'job_description' && interimText && (
+                  <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                    Speaking: {interimText}...
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Optional Fields */}
@@ -602,34 +824,85 @@ export default function PostJobPage() {
               <div className="grid md:grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={jobData.location}
-                    onChange={(e) => setJobData({ ...jobData, location: e.target.value })}
-                    placeholder="Bangalore, India"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="location"
+                      value={jobData.location}
+                      onChange={(e) => setJobData({ ...jobData, location: e.target.value })}
+                      placeholder="Bangalore, India"
+                      className={currentField === 'location' ? 'border-blue-400 bg-blue-50' : ''}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentField === 'location' ? "destructive" : "outline"}
+                      className="absolute right-1 top-1 h-8 w-8 p-0"
+                      onClick={() => currentField === 'location' ? stopVoiceInput() : startFieldVoiceInput('location')}
+                    >
+                      {currentField === 'location' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
+                    {currentField === 'location' && interimText && (
+                      <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                        Speaking: {interimText}...
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="salary_stipend">Salary / Stipend</Label>
-                  <Input
-                    id="salary_stipend"
-                    value={jobData.salary_stipend}
-                    onChange={(e) => setJobData({ ...jobData, salary_stipend: e.target.value })}
-                    placeholder="₹25,000/month"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="salary_stipend"
+                      value={jobData.salary_stipend}
+                      onChange={(e) => setJobData({ ...jobData, salary_stipend: e.target.value })}
+                      placeholder="₹25,000/month"
+                      className={currentField === 'salary_stipend' ? 'border-blue-400 bg-blue-50' : ''}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentField === 'salary_stipend' ? "destructive" : "outline"}
+                      className="absolute right-1 top-1 h-8 w-8 p-0"
+                      onClick={() => currentField === 'salary_stipend' ? stopVoiceInput() : startFieldVoiceInput('salary_stipend')}
+                    >
+                      {currentField === 'salary_stipend' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
+                    {currentField === 'salary_stipend' && interimText && (
+                      <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                        Speaking: {interimText}...
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="key_skills">Key Skills</Label>
                 <div className="flex space-x-2">
-                  <Input
-                    id="key_skills"
-                    value={keySkillInput}
-                    onChange={(e) => setKeySkillInput(e.target.value)}
-                    placeholder="Add a skill and press Enter"
-                    onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addKeySkill())}
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      id="key_skills"
+                      value={keySkillInput}
+                      onChange={(e) => setKeySkillInput(e.target.value)}
+                      placeholder="Add a skill and press Enter"
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addKeySkill())}
+                      className={currentField === 'key_skills' ? 'border-blue-400 bg-blue-50' : ''}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={currentField === 'key_skills' ? "destructive" : "outline"}
+                      className="absolute right-1 top-1 h-8 w-8 p-0"
+                      onClick={() => currentField === 'key_skills' ? stopVoiceInput() : startFieldVoiceInput('key_skills')}
+                    >
+                      {currentField === 'key_skills' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
+                    {currentField === 'key_skills' && interimText && (
+                      <div className="absolute top-full left-0 right-0 bg-blue-100 border border-blue-200 rounded-b-md p-2 text-sm text-blue-700">
+                        Speaking: {interimText}...
+                      </div>
+                    )}
+                  </div>
                   <Button type="button" onClick={addKeySkill} size="sm">
                     <Plus className="h-4 w-4" />
                   </Button>

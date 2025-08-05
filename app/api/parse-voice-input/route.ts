@@ -1,180 +1,97 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { generateAIResponse } from '@/lib/openai'
 
 export async function POST(request: NextRequest) {
   try {
     const { transcript } = await request.json()
-
-    if (!transcript || transcript.trim().length === 0) {
-      return NextResponse.json({ error: 'No transcript provided' }, { status: 400 })
+    
+    if (!transcript) {
+      return NextResponse.json(
+        { error: 'No transcript provided' },
+        { status: 400 }
+      )
     }
 
-    // Use AI to parse the voice input into structured job data
+    // Create a structured prompt for OpenAI to extract job posting information
     const prompt = `
-You are a voice input parser for a job posting form. Parse the following voice transcript and extract job information into a JSON format. Only extract information that is clearly mentioned. Leave fields empty if not clearly stated.
+You are a professional job posting parser. Extract the following information from this voice transcript and return ONLY a valid JSON object (no extra text or explanations):
 
 Voice Transcript: "${transcript}"
 
-Please extract and return ONLY a valid JSON object with these fields:
+Return a JSON object with these exact fields:
 {
-  "contact_name": "string or null",
-  "contact_number": "string or null", 
-  "company_name": "string or null",
-  "job_title": "string or null",
-  "job_type": "Full-Time/Part-Time/Internship/Freelance or null",
-  "location": "string or null",
-  "salary_stipend": "string or null",
-  "key_skills": ["array of skill strings or empty array"],
-  "job_description": "string or null"
+  "contact_name": "string",
+  "contact_number": "string (format with country code if mentioned, otherwise as given)",
+  "contact_email": "string (empty string if not mentioned)",
+  "company_name": "string",
+  "job_title": "string", 
+  "job_type": "string (Full-Time, Part-Time, Internship, Freelance, or Contract)",
+  "location": "string (add country if not specified)",
+  "salary_stipend": "string (include currency and time period if mentioned, empty string if not mentioned)",
+  "key_skills": ["array of strings, empty array if not mentioned"],
+  "job_description": "string (the main job requirements/description)"
 }
 
-Guidelines:
-- Extract phone numbers in clean format (remove extra spaces/dashes)
-- For job_type, only use: "Full-Time", "Part-Time", "Internship", or "Freelance"
-- For key_skills, extract technology/skill names as separate array items
-- For job_description, extract the main job requirements/responsibilities
-- If name includes titles like Mr/Ms/Dr, include them
-- Return only the JSON object, no other text
-
-Example response:
-{
-  "contact_name": "John Doe",
-  "contact_number": "9876543210",
-  "company_name": "TechCorp Solutions",
-  "job_title": "Software Developer",
-  "job_type": "Full-Time",
-  "location": "Bangalore",
-  "salary_stipend": "50000 per month",
-  "key_skills": ["JavaScript", "React", "Node.js"],
-  "job_description": "We need a developer to build web applications with modern frameworks"
-}
+IMPORTANT: 
+- Return ONLY the JSON object, no other text
+- Extract information exactly as spoken
+- If something is not mentioned, use empty string or empty array
+- For phone numbers, format with country code if country is mentioned
+- For salary, include currency and time period if mentioned
 `
 
-    // Use a simpler approach for voice parsing instead of the career recommendations function
-    const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama3-8b-8192',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a voice input parser. Extract job posting information from speech and return only valid JSON.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 1000,
-      }),
-    })
-
-    if (!aiResponse.ok) {
-      throw new Error('AI parsing failed')
-    }
-
-    const aiData = await aiResponse.json()
-    const parsedText = aiData.choices[0]?.message?.content || ''
-
-    // Try to extract JSON from the response
+    // Generate AI response to parse the voice input
+    const aiResponse = await generateAIResponse(prompt)
+    
     let parsedData
     try {
-      // Look for JSON object in the response
-      const responseText = Array.isArray(parsedText) ? parsedText.join(' ') : String(parsedText)
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      // First try to extract JSON from the response if it contains extra text
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         parsedData = JSON.parse(jsonMatch[0])
       } else {
-        throw new Error('No JSON found in response')
+        // Fallback: try parsing the entire response
+        parsedData = JSON.parse(aiResponse)
       }
     } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', parseError)
+      console.error('Error parsing AI response:', parseError)
+      console.log('AI Response:', aiResponse)
       
-      // Fallback to manual parsing
-      parsedData = {
-        contact_name: extractField(transcript, [
-          /(?:my name is|i am|this is|i'm|call me)\s+([a-z\s]{2,30})/i,
-          /(?:contact person|person is|contact is)\s+([a-z\s]{2,30})/i,
-        ]),
-        contact_number: extractField(transcript, [
-          /(?:phone|number|mobile|contact).*?([+]?[0-9\s\-()]{8,15})/i,
-          /\b([0-9]{10})\b/,
-        ]),
-        company_name: extractField(transcript, [
-          /(?:company|from|work at|represent)\s+([a-z\s&.]{2,30})/i,
-          /(?:we are|i'm with)\s+([a-z\s&.]{2,30})/i,
-        ]),
-        job_title: extractField(transcript, [
-          /(?:job title|position|role|hiring for|looking for)\s+(?:is\s+)?([a-z\s]{3,30})/i,
-          /(?:need|want|seeking)\s+(?:a|an)?\s*([a-z\s]{3,30})\s+(?:position|role|developer|engineer|manager|analyst)/i,
-        ]),
-        job_type: extractJobType(transcript),
-        location: extractField(transcript, [
-          /(?:location|based in|located in|office in|work from)\s+([a-z\s,]{2,30})/i,
-          /(?:in|at)\s+(bangalore|mumbai|delhi|chennai|hyderabad|pune|kolkata|ahmedabad)/i,
-        ]),
-        salary_stipend: extractField(transcript, [
-          /(?:salary|stipend|pay|package).*?([0-9,]+\s*(?:per month|monthly|thousand|lakh|k|rupees|rs))/i,
-        ]),
-        key_skills: extractSkills(transcript),
-        job_description: extractDescription(transcript),
+      return NextResponse.json(
+        { error: 'Failed to parse voice input. Please try speaking more clearly or fill the form manually.' },
+        { status: 500 }
+      )
+    }
+
+    // Validate that we have the expected structure
+    const requiredFields = ['contact_name', 'contact_number', 'contact_email', 'company_name', 'job_title', 'job_type', 'location', 'salary_stipend', 'key_skills', 'job_description']
+    const validatedData: Record<string, unknown> = {}
+    
+    for (const field of requiredFields) {
+      if (field === 'key_skills') {
+        validatedData[field] = Array.isArray(parsedData[field]) ? parsedData[field] : []
+      } else {
+        validatedData[field] = parsedData[field] || ''
       }
     }
 
-    return NextResponse.json(parsedData)
+    console.log('Parsed voice input:', validatedData)
+
+    return NextResponse.json({
+      success: true,
+      data: validatedData,
+      originalTranscript: transcript
+    })
+
   } catch (error) {
     console.error('Voice parsing error:', error)
-    return NextResponse.json({ error: 'Failed to parse voice input' }, { status: 500 })
+    return NextResponse.json(
+      { 
+        error: 'Failed to process voice input',
+        message: 'Please try again or fill the form manually.',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
-}
-
-function extractField(text: string, patterns: RegExp[]): string | null {
-  for (const pattern of patterns) {
-    const match = text.match(pattern)
-    if (match && match[1]) {
-      const result = match[1].trim().replace(/\b(and|from|at|phone|number|company)\b.*/i, '').trim()
-      if (result.length > 1) {
-        return result
-      }
-    }
-  }
-  return null
-}
-
-function extractJobType(text: string): string | null {
-  const lower = text.toLowerCase()
-  if (lower.includes('intern') || lower.includes('internship')) {
-    return 'Internship'
-  } else if (lower.includes('full time') || lower.includes('permanent')) {
-    return 'Full-Time'
-  } else if (lower.includes('freelance') || lower.includes('contract') || lower.includes('part time')) {
-    return 'Freelance'
-  }
-  return null
-}
-
-function extractSkills(text: string): string[] {
-  const skillsPattern = /(?:skills|technologies|tech stack|experience in|know|familiar with|use)\s+(?:are|required|like)?\s*([a-z\s,&.+#-]+?)(?:\s(?:and|experience|knowledge|job description|description))/i
-  const match = text.match(skillsPattern)
-  if (match && match[1]) {
-    return match[1]
-      .split(/,|\s+and\s+|\s+or\s+/)
-      .map(s => s.trim())
-      .filter(s => s.length > 1 && !['the', 'and', 'or', 'with'].includes(s.toLowerCase()))
-      .slice(0, 8)
-  }
-  return []
-}
-
-function extractDescription(text: string): string | null {
-  const descriptionPattern = /(?:job description|description)\s+(?:is\s+)?(.+?)(?:\s*$)/i
-  const match = text.match(descriptionPattern)
-  if (match && match[1]) {
-    return match[1].trim()
-  }
-  return null
 }

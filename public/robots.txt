@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://hackokai.vercel.app/sitemap.xml

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState, useEffect } from "react"
 import { QRCodeCanvas } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
@@ -19,13 +19,40 @@ export function QRCodeComponent({
   showDownload = true 
 }: QRCodeComponentProps) {
   const qrRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
 
-  // Generate the job URL
+  // Ensure component is mounted before rendering QR code
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Generate the job URL with production-ready environment detection
   const getJobUrl = () => {
-    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL
-    if (!baseUrl || baseUrl.includes('localhost')) {
-      baseUrl = 'https://hackokai.vercel.app'
+    // Get base URL from environment, defaulting to production
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hackokai.vercel.app'
+    
+    // Only use localhost in true development environment
+    const isLocalDevelopment = 
+      process.env.NODE_ENV === 'development' && 
+      !process.env.VERCEL && // Not on Vercel
+      !process.env.RAILWAY_ENVIRONMENT && // Not on Railway
+      !process.env.NETLIFY // Not on Netlify
+    
+    if (isLocalDevelopment) {
+      baseUrl = 'http://localhost:3000'
     }
+    
+    // For client-side detection, also check window location
+    if (typeof window !== 'undefined') {
+      const isLocalhost = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1'
+      if (isLocalhost && process.env.NODE_ENV === 'development') {
+        baseUrl = `${window.location.protocol}//${window.location.host}`
+      }
+    }
+    
+    console.log(`QRComponent - Environment: ${process.env.NODE_ENV}, VERCEL: ${!!process.env.VERCEL}, isLocalDev: ${isLocalDevelopment}, baseUrl: ${baseUrl}`)
+    
     return `${baseUrl}/job/${jobId}`
   }
 
@@ -42,6 +69,17 @@ export function QRCodeComponent({
       link.click()
       document.body.removeChild(link)
     }
+  }
+
+  // Don't render until mounted (prevents SSR issues)
+  if (!mounted) {
+    return (
+      <div className={`flex flex-col items-center space-y-4 ${className}`}>
+        <div className="p-4 bg-white rounded-lg shadow-md border flex items-center justify-center" style={{width: size + 32, height: size + 32}}>
+          <div className="text-gray-500">Loading QR Code...</div>
+        </div>
+      </div>
+    )
   }
 
   return (

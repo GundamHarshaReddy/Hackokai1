@@ -1,156 +1,126 @@
-# Supabase Integration Setup
+# Supabase Setup Guide for Hackokai
 
-This project is integrated with Supabase for backend services including authentication, database, and storage.
+## 1. Create a Supabase Project
 
-## Setup Instructions
-
-### 1. Create a Supabase Project
-
-1. Go to [Supabase](https://supabase.com) and create a new account or sign in
+1. Go to [Supabase](https://supabase.com) and sign up/sign in
 2. Click "New Project"
 3. Choose your organization
-4. Enter a project name (e.g., "hackokai")
-5. Enter a strong database password
-6. Choose a region close to your users
-7. Click "Create new project"
+4. Fill in your project details:
+   - Name: `hackokai` or any name you prefer
+   - Database Password: Create a strong password (save this!)
+   - Region: Choose the region closest to your users
+5. Click "Create new project"
 
-### 2. Get Your Project Credentials
+## 2. Set up the Database Schema
 
-1. In your Supabase dashboard, go to Settings > API
-2. Copy your project URL and anon key
-3. Update your `.env.local` file:
+1. In your Supabase dashboard, go to the "SQL Editor" tab
+2. Copy the contents of `supabase-schema.sql` from your project
+3. Paste it into the SQL editor and click "Run"
+4. This will create all the necessary tables and insert sample job data
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+## 3. Get Your Environment Variables
+
+1. In your Supabase dashboard, go to "Settings" > "API"
+2. Copy the following values:
+   - Project URL
+   - `anon` `public` key
+
+## 4. Configure Your Environment
+
+1. Create a `.env.local` file in your project root (copy from `.env.example`)
+2. Add your Supabase credentials:
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_project_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+
+# OpenAI API Key (for career recommendations)
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-### 3. Set Up Database Schema
+## 5. Database Tables Created
 
-1. In your Supabase dashboard, go to SQL Editor
-2. Copy and paste the content from `database/schema.sql`
-3. Run the SQL commands to create your database structure
+### Students Table
+- Stores all student assessment data
+- Includes basic info, core values, work preferences, and personality scores
+- Unique constraints on email and phone
 
-### 4. Configure Authentication (Optional)
+### Career Recommendations Table
+- Stores AI-generated career recommendations for each student
+- Links to students table
+- Includes role, match score, explanation, and job openings
 
-If you want to use Supabase Auth:
+### Jobs Table
+- Stores job postings from companies
+- Includes company info, job details, and required skills
 
-1. In your Supabase dashboard, go to Authentication > Settings
-2. Configure your site URL: `http://localhost:3000` (for development)
-3. Configure redirect URLs if needed
-4. Enable/disable auth providers as needed
+### Job Applications Table
+- Tracks student applications to jobs
+- Links students to jobs they're interested in
+- Includes application status tracking
 
-### 5. Set Up Storage (Optional)
+## 6. Features Now Available
 
-If you need file storage:
+### For Students:
+- ✅ Complete career assessment with data persistence
+- ✅ Accurate fitment scores based on comprehensive analysis
+- ✅ Email and phone validation during registration
+- ✅ Career recommendations saved to profile
+- ✅ Job application tracking
 
-1. In your Supabase dashboard, go to Storage
-2. Create buckets as needed
-3. Configure bucket policies
+### For Companies:
+- ✅ Post jobs with full details
+- ✅ Job data stored in database
+- ✅ QR code generation for job listings
 
-## Usage
+### For Admins:
+- ✅ View all students and their assessments
+- ✅ Search students by phone/email
+- ✅ Track job applications and student engagement
 
-### Authentication
+## 7. Enhanced Fitment Scoring
 
-```tsx
-import { useAuth } from '@/hooks/useAuth'
+The system now calculates accurate fitment scores based on:
 
-function MyComponent() {
-  const { user, signIn, signOut, loading } = useAuth()
-  
-  if (loading) return <div>Loading...</div>
-  
-  if (user) {
-    return (
-      <div>
-        <p>Welcome, {user.email}!</p>
-        <button onClick={() => signOut()}>Sign Out</button>
-      </div>
-    )
-  }
-  
-  return (
-    <button onClick={() => signIn('email@example.com', 'password')}>
-      Sign In
-    </button>
-  )
-}
-```
+1. **Education Match (25%)**: How well the student's degree and specialization align with the role
+2. **Core Values Alignment (25%)**: Match between student's selected values and role requirements
+3. **Work Style Preferences (25%)**: Compatibility of work preferences with role characteristics
+4. **Personality Traits (25%)**: How personality scores align with role demands
 
-### Database Operations
+Scores range from 40-98% to provide realistic and meaningful career guidance.
 
-```tsx
-import { db } from '@/lib/supabase-utils'
+## 8. Testing the Setup
 
-// Select data
-const { data, error } = await db.select('users')
+1. Start your development server: `npm run dev`
+2. Go to `/student/assessment` to test the complete flow
+3. Fill out the assessment and verify data is saved in Supabase
+4. Check the "students" and "career_recommendations" tables in your Supabase dashboard
 
-// Insert data
-const { data, error } = await db.insert('users', {
-  email: 'user@example.com',
-  full_name: 'John Doe'
-})
+## 9. Row Level Security (RLS)
 
-// Update data
-const { data, error } = await db.update('users', 'user-id', {
-  full_name: 'Jane Doe'
-})
+The database is configured with RLS policies that allow anonymous access for the assessment flow while maintaining security. You can modify these policies in the Supabase dashboard under "Authentication" > "Policies" if needed.
 
-// Delete data
-const { data, error } = await db.delete('users', 'user-id')
-```
+## 10. Next Steps
 
-### Direct Supabase Client
-
-```tsx
-import { supabase } from '@/lib/supabase'
-
-// More complex queries
-const { data, error } = await supabase
-  .from('users')
-  .select('*, posts(*)')
-  .eq('active', true)
-  .order('created_at', { ascending: false })
-```
-
-## Environment Variables
-
-Make sure your `.env.local` file includes:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-## Security Notes
-
-- The anon key is safe to use in client-side code
-- Use Row Level Security (RLS) policies to protect your data
-- Never expose your service role key in client-side code
-- Always validate and sanitize user inputs
+- Set up proper authentication if needed
+- Configure email notifications for job applications
+- Add admin dashboard functionality
+- Implement advanced search and filtering
+- Add analytics and reporting features
 
 ## Troubleshooting
 
-### Common Issues
+### Common Issues:
 
-1. **"Missing Supabase environment variables"**
-   - Check that your `.env.local` file exists and has the correct variables
-   - Restart your development server after adding environment variables
+1. **Environment Variables**: Make sure your `.env.local` file is in the root directory and not committed to git
+2. **CORS Issues**: Supabase should handle CORS automatically, but ensure your project URL is correct
+3. **RLS Policies**: If you get permission errors, check the RLS policies in your Supabase dashboard
+4. **API Keys**: Ensure you're using the `anon` public key, not the service role key for client-side operations
 
-2. **Database connection errors**
-   - Verify your project URL and API key are correct
-   - Check that your database is running in the Supabase dashboard
+### Getting Help:
 
-3. **Authentication not working**
-   - Verify your site URL is configured correctly in Supabase Auth settings
-   - Check that you've enabled the authentication methods you're trying to use
-
-4. **RLS policies blocking queries**
-   - Review your Row Level Security policies
-   - Test queries in the Supabase SQL editor first
-
-## Useful Links
-
-- [Supabase Documentation](https://supabase.com/docs)
-- [Supabase JavaScript Client](https://supabase.com/docs/reference/javascript)
-- [Next.js with Supabase Guide](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
+- Check Supabase documentation: https://supabase.com/docs
+- Review the database logs in your Supabase dashboard
+- Check the browser console for error messages
+- Verify your API calls in the Network tab of developer tools

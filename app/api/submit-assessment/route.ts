@@ -1,69 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { dbHelpers } from '@/lib/supabase'
-import { generateCareerRecommendations } from '@/lib/groq'
+import { dbOperations } from '@/lib/supabase'
+import { generateCareerRecommendations } from '@/lib/openai'
 
 export async function POST(request: NextRequest) {
   try {
     const studentData = await request.json()
 
-    // Save student data using server-side service role
-    const student = await dbHelpers.insertStudent(studentData)
+    // Validate required fields
+    const requiredFields = ['name', 'email', 'phone', 'education_degree', 'specialization', 'core_values', 'work_preferences', 'personality_scores']
+    for (const field of requiredFields) {
+      if (!studentData[field]) {
+        return NextResponse.json(
+          { error: `Missing required field: ${field}` },
+          { status: 400 }
+        )
+      }
+    }
 
-    // Generate career recommendations directly instead of making an API call
+    // Check if student already exists by email or phone
+    const existingByEmail = await dbOperations.getStudentByEmail(studentData.email)
+    const existingByPhone = await dbOperations.getStudentByPhone(studentData.phone)
+
+    let student
+
+    if (existingByEmail) {
+      // Update existing student by email
+      student = await dbOperations.updateStudent(existingByEmail.id, studentData)
+    } else if (existingByPhone) {
+      // Update existing student by phone
+      student = await dbOperations.updateStudent(existingByPhone.id, studentData)
+    } else {
+      // Create new student
+      student = await dbOperations.createStudent(studentData)
+    }
+
+    // Generate career recommendations using OpenAI
     const recommendations = await generateCareerRecommendations(studentData)
+
+    // Save career recommendations to database
+    if (recommendations && recommendations.length > 0) {
+      const recommendationsToSave = recommendations.map(rec => ({
+        role: rec.role,
+        match_score: rec.match,
+        fitment_score: rec.match, // Same as match_score for compatibility
+        explanation: rec.explanation,
+        job_openings: rec.openings || 0
+      }))
+
+      await dbOperations.saveCareerRecommendations(student.id, recommendationsToSave)
+    }
 
     return NextResponse.json({
       success: true,
-      student,
+      message: 'Assessment submitted successfully',
+      student: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone
+      },
       recommendations
     })
   } catch (error: unknown) {
     console.error('Assessment submission error:', error)
     
-    // Handle specific database constraint errors
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
-    // Check for duplicate email constraint
-    if (errorMessage.includes('students_email_key') || errorMessage.includes('duplicate key value violates unique constraint')) {
-      if (errorMessage.includes('email')) {
-        return NextResponse.json(
-          { 
-            error: 'Email already exists',
-            message: 'This email address is already registered. Please use a different email address.'
-          },
-          { status: 400 }
-        )
-      }
-    }
-    
-    // Check for duplicate phone constraint
-    if (errorMessage.includes('students_phone_key') || (errorMessage.includes('duplicate') && errorMessage.includes('phone'))) {
-      return NextResponse.json(
-        { 
-          error: 'Phone number already exists',
-          message: 'This phone number is already registered. Please use a different phone number.'
-        },
-        { status: 400 }
-      )
-    }
-    
-    // Check for other validation errors
-    if (errorMessage.includes('violates check constraint') || errorMessage.includes('invalid input')) {
-      return NextResponse.json(
-        { 
-          error: 'Invalid data',
-          message: 'Please check your input data and try again.'
-        },
-        { status: 400 }
-      )
-    }
-    
-    // Generic server error
     return NextResponse.json(
       { 
-        error: 'Failed to submit assessment',
-        message: 'An unexpected error occurred. Please try again later.',
-        details: errorMessage
+        error: 'Internal server error',
+        message: 'Failed to process assessment',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )

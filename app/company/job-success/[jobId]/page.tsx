@@ -1,259 +1,239 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Plus, Copy, QrCode, Edit, Trash2 } from "lucide-react"
-import { type Job, dbHelpers } from "@/lib/supabase"
+import { CheckCircle, Briefcase, QrCode, Copy, ExternalLink } from "lucide-react"
 import { QRCodeComponent } from "@/components/QRCodeComponent"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
 
-export default function JobSuccessPage({ params }: { params: Promise<{ jobId: string }> }) {
-  const router = useRouter()
-  const resolvedParams = use(params)
+interface Job {
+  id: string
+  company_name: string
+  job_title: string
+  job_description: string
+  location: string
+  job_type: string
+  key_skills: string[]
+  created_at: string
+}
+
+export default function JobSuccessPage() {
+  const params = useParams()
+  const jobId = params.jobId as string
   const [job, setJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
-  const [copied, setCopied] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
+  const [error, setError] = useState("")
+  const [copySuccess, setCopySuccess] = useState(false)
 
   useEffect(() => {
-    const fetchJob = async () => {
-      try {
-        const job = await dbHelpers.getJobByJobId(resolvedParams.jobId)
-        setJob(job)
-      } catch (error) {
-        console.error("Error fetching job:", error)
-      } finally {
-        setLoading(false)
-      }
+    if (jobId && jobId !== 'undefined') {
+      fetchJobDetails()
+    } else {
+      setError("Invalid job ID")
+      setLoading(false)
     }
-    
-    fetchJob()
-  }, [resolvedParams.jobId])
+  }, [jobId])
 
-  const copyToClipboard = async (text: string) => {
+  const fetchJobDetails = async () => {
     try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      console.error("Failed to copy:", error)
+      const response = await fetch(`/api/jobs/${jobId}`)
+      if (response.ok) {
+        const jobData = await response.json()
+        setJob(jobData)
+      } else {
+        setError("Job not found")
+      }
+    } catch (err) {
+      console.error('Error fetching job:', err)
+      setError("Failed to load job details")
+    } finally {
+      setLoading(false)
     }
   }
 
-  // Replace the deleteJob function
-  const deleteJob = async () => {
-    if (!job || !confirm("Are you sure you want to delete this job posting?")) return
+  const jobUrl = typeof window !== 'undefined' ? `${window.location.origin}/job/${jobId}` : `/job/${jobId}`
 
+  const copyToClipboard = async () => {
     try {
-      await dbHelpers.deleteJob(job.id)
-      alert("Job deleted successfully!")
-      router.push("/admin")
-    } catch (error) {
-      console.error("Error deleting job:", error)
-      alert("Error deleting job. Please try again.")
+      await navigator.clipboard.writeText(jobUrl)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <div className="text-center">Loading...</div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading job details...</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  if (!job) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <div className="text-center">Job not found</div>
-        </div>
-      </div>
-    )
-  }
-
-  const jobUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/job/${job.job_id}`
-
-  if (showPreview) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Job Preview - Verify Before Publishing
-                <div className="flex space-x-2">
-                  <Button variant="outline" onClick={() => setShowPreview(false)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Job
-                  </Button>
-                  <Button variant="destructive" onClick={deleteJob}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </div>
-              </CardTitle>
-              <CardDescription>Review all details carefully before making this job live</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">{job.job_title}</h3>
-                  <p className="text-gray-600 mb-2">{job.company_name}</p>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">{job.job_type}</span>
-                  </div>
-                  {job.location && <p className="text-sm text-gray-500 mt-2">📍 {job.location}</p>}
-                  {job.salary_stipend && <p className="text-sm text-gray-500">💰 {job.salary_stipend}</p>}
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Contact Information</h4>
-                  <p className="text-sm text-gray-600">{job.contact_name}</p>
-                  <p className="text-sm text-gray-600">{job.contact_number}</p>
-                  <p className="text-sm text-gray-500 mt-2">Job ID: {job.job_id}</p>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Job Description</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-700 whitespace-pre-wrap">{job.job_description}</p>
-                </div>
-              </div>
-
-              {job.key_skills && job.key_skills.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Key Skills Required</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {job.key_skills.map((skill, index) => (
-                      <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex space-x-4 pt-4 border-t">
-                <Button onClick={() => setShowPreview(false)} className="flex-1">
-                  Confirm & Publish
-                </Button>
-                <Button variant="outline" onClick={() => router.push("/company/post-job")}>
-                  Create New Job
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-pink-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="text-center py-8">
+            <div className="text-red-600 mb-4">
+              <p className="text-lg font-semibold">Error</p>
+              <p>{error}</p>
+            </div>
+            <Button onClick={() => window.location.href = '/company/post-job'}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <Card className="text-center mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 p-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Success Header */}
+        <Card className="text-center">
           <CardHeader>
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <CardTitle className="text-2xl text-green-700">Job Posted Successfully!</CardTitle>
-            <CardDescription>Your job opportunity is now live and ready for candidates</CardDescription>
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <CardTitle className="text-3xl text-green-800">Job Posted Successfully!</CardTitle>
+            <CardDescription className="text-lg">
+              Your job posting is now live and ready to receive applications
+            </CardDescription>
           </CardHeader>
         </Card>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* QR Code Section */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Job Details */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <QrCode className="mr-2 h-5 w-5" />
-                QR Code for Opportunity Wall
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Job Details
               </CardTitle>
-              <CardDescription>
-                Print this QR code and display it at your booth for instant candidate access
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <QRCodeComponent 
-                jobId={job.job_id}
-                size={256}
-                showDownload={true}
-                className="mx-auto"
-              />
-              <div className="text-center">
-                <p className="font-semibold text-gray-900">{job.job_title}</p>
-                <p className="text-sm text-gray-600">{job.company_name}</p>
-                <p className="text-xs text-gray-500 mt-1">Job ID: {job.job_id}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Job Details Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Job Information</CardTitle>
-              <CardDescription>Your published job details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h3 className="font-semibold text-lg">{job.job_title}</h3>
-                <p className="text-gray-600">{job.company_name}</p>
-                <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm mt-1">
-                  {job.job_type}
-                </span>
+                <label className="text-sm font-medium text-gray-600">Job ID</label>
+                <p className="font-mono text-sm bg-gray-100 p-2 rounded">{jobId}</p>
               </div>
+              
+              {job && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Company</label>
+                    <p className="font-medium">{job.company_name}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Position</label>
+                    <p className="font-medium">{job.job_title}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Location</label>
+                    <p>{job.location}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Type</label>
+                    <p>{job.job_type}</p>
+                  </div>
+                  
+                  {job.key_skills && job.key_skills.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Key Skills</label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {job.key_skills.map((skill, index) => (
+                          <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
 
+          {/* QR Code Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                QR Code & Share
+              </CardTitle>
+              <CardDescription>
+                Students can scan this QR code to view the job posting
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-center">
+                <QRCodeComponent jobId={jobId} />
+              </div>
+              
               <div>
-                <p className="text-sm font-medium text-gray-700">Job ID:</p>
-                <div className="flex items-center space-x-2">
-                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">{job.job_id}</code>
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(job.job_id)}>
+                <label className="text-sm font-medium text-gray-600">Job URL</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input 
+                    type="text" 
+                    value={jobUrl}
+                    readOnly
+                    className="flex-1 text-sm bg-gray-100 p-2 rounded border"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-1"
+                  >
                     <Copy className="h-3 w-3" />
+                    {copySuccess ? 'Copied!' : 'Copy'}
                   </Button>
                 </div>
               </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-700">Direct Job URL:</p>
-                <div className="flex items-center space-x-2">
-                  <code className="bg-gray-100 px-2 py-1 rounded text-sm flex-1 truncate">{jobUrl}</code>
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(jobUrl)}>
-                    {copied ? "Copied!" : <Copy className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-700">Contact Information:</p>
-                <p className="text-sm text-gray-600">{job.contact_name}</p>
-                <p className="text-sm text-gray-600">{job.contact_number}</p>
-              </div>
-
-              <div className="pt-4 border-t">
-                <Button onClick={() => setShowPreview(true)} variant="outline" className="w-full mb-2">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Preview & Edit Job
-                </Button>
-              </div>
+              
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => window.open(jobUrl, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Job Posting
+              </Button>
             </CardContent>
           </Card>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-center space-x-4 mt-8">
-          <Link href="/company/post-job">
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
+        <Card>
+          <CardContent className="flex flex-col sm:flex-row gap-4 pt-6">
+            <Button 
+              className="flex-1" 
+              onClick={() => window.location.href = '/company/post-job'}
+            >
               Post Another Job
             </Button>
-          </Link>
-          <Link href="/admin">
-            <Button>View All Jobs</Button>
-          </Link>
-        </div>
+            <Button 
+              variant="outline"
+              className="flex-1"
+              onClick={() => window.location.href = '/student/opportunities'}
+            >
+              View All Jobs
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

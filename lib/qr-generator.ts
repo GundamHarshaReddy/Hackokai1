@@ -1,11 +1,30 @@
 export function generateQRCodeURL(jobId: string): string {
-  // Get base URL with proper fallback for production
-  let baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+  // Production-ready QR code generation
   
-  // If BASE_URL is not set or is localhost, use production URL
-  if (!baseUrl || baseUrl.includes('localhost')) {
-    baseUrl = 'https://hackokai.vercel.app'
+  // Get base URL from environment, defaulting to production
+  let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hackokai.vercel.app'
+  
+  // Only use localhost in true development environment
+  const isLocalDevelopment = 
+    process.env.NODE_ENV === 'development' && 
+    !process.env.VERCEL && // Not on Vercel
+    !process.env.RAILWAY_ENVIRONMENT && // Not on Railway
+    !process.env.NETLIFY // Not on Netlify
+  
+  if (isLocalDevelopment) {
+    baseUrl = 'http://localhost:3000'
   }
+  
+  // For client-side detection, also check window location
+  if (typeof window !== 'undefined') {
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1'
+    if (isLocalhost && process.env.NODE_ENV === 'development') {
+      baseUrl = `${window.location.protocol}//${window.location.host}`
+    }
+  }
+  
+  console.log(`QR Generator - Environment: ${process.env.NODE_ENV}, VERCEL: ${!!process.env.VERCEL}, isLocalDev: ${isLocalDevelopment}, baseUrl: ${baseUrl}`)
   
   const jobUrl = `${baseUrl}/job/${jobId}`
   return `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(jobUrl)}&format=png`

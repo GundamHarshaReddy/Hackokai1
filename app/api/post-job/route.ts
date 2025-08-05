@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
-import { generateJobId, generateQRCodeURL } from '@/lib/qr-generator'
+import { generateQRCodeURL } from '@/lib/qr-generator'
+import { dbOperations } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,57 +17,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      )
-    }
-
-    // Generate job ID and QR code URL
-    const job_id = generateJobId()
-    const qr_code_url = generateQRCodeURL(job_id)
-
-    // Prepare job data for insertion
-    const jobToInsert = {
-      job_id,
-      contact_name: jobData.contact_name,
-      contact_number: jobData.contact_number,
+    // Prepare job data for database
+    const jobForDb = {
       company_name: jobData.company_name,
       job_title: jobData.job_title,
-      job_type: jobData.job_type,
       job_description: jobData.job_description,
-      location: jobData.location || null,
-      salary_stipend: jobData.salary_stipend || null,
-      key_skills: jobData.key_skills || [],
+      location: jobData.location || 'Remote',
+      job_type: jobData.job_type,
+      key_skills: jobData.key_skills || []
+    }
+
+    // Save job to database first to get the actual job ID
+    console.log('Saving job to database:', jobForDb)
+    const savedJob = await dbOperations.createJob(jobForDb)
+    console.log('Job saved successfully:', savedJob)
+
+    // Generate QR code URL using the actual saved job ID
+    const qr_code_url = generateQRCodeURL(savedJob.id)
+
+    return NextResponse.json({ 
+      success: true, 
+      job_id: savedJob.id,
       qr_code_url,
-    }
-
-    // Use service role client to bypass RLS
-    const { data, error } = await supabaseAdmin
-      .from('jobs')
-      .insert(jobToInsert)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Database error:', error)
-      return NextResponse.json(
-        { error: 'Failed to create job posting' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      job: data,
-      message: 'Job posted successfully!'
+      message: 'Job posted successfully',
+      job: savedJob
     })
 
   } catch (error) {
-    console.error('API error:', error)
+    console.error('Error creating job:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Failed to create job',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
