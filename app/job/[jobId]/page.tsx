@@ -81,7 +81,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
       setLoading(true)
       setError("")
       
-      const response = await fetch(`/api/jobs/${resolvedParams.jobId}`)
+      // Try the dynamic route first, fallback to query parameter route
+      let response = await fetch(`/api/jobs/${resolvedParams.jobId}`)
+      
+      // If dynamic route fails, try the query parameter approach
+      if (!response.ok && response.status === 404) {
+        response = await fetch(`/api/job-by-id?id=${resolvedParams.jobId}`)
+      }
+      
       if (response.ok) {
         const jobData = await response.json()
         setJob(jobData)
