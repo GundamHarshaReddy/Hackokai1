@@ -45,7 +45,6 @@ export interface CareerRecommendation {
   student_id: string
   role: string
   match_score: number
-  fitment_score: number // Add this for backward compatibility
   explanation: string
   job_openings: number
   created_at: string

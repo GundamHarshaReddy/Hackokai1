@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
       const recommendationsToSave = recommendations.map(rec => ({
         role: rec.role,
         match_score: rec.match,
-        fitment_score: rec.match, // Same as match_score for compatibility
         explanation: rec.explanation,
         job_openings: rec.openings || 0
       }))
