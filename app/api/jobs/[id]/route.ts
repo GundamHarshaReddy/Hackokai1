@@ -3,10 +3,11 @@ import { dbOperations } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const jobId = params.id
+    const resolvedParams = await params
+    const jobId = resolvedParams.id
     console.log('Fetching job with ID:', jobId)
 
     if (!jobId) {

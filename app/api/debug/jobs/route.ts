@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       totalJobs: jobs?.length || 0,
-      jobs: jobs?.map((job: any) => ({
+      jobs: jobs?.map((job: { id: string; company_name: string; job_title: string; created_at: string }) => ({
         id: job.id,
         company_name: job.company_name,
         job_title: job.job_title,

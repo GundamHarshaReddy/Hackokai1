@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -54,17 +54,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
   const [isExpressingInterest, setIsExpressingInterest] = useState(false)
   const [hasExpressedInterest, setHasExpressedInterest] = useState(false)
 
-  useEffect(() => {
-    loadJobDetails()
-    loadStudentFromSession()
-  }, [])
-
-  useEffect(() => {
-    if (job && currentStudent) {
-      calculateFitmentScore()
-    }
-  }, [job, currentStudent])
-
   const loadStudentFromSession = () => {
     try {
       const studentData = sessionStorage.getItem('currentStudent')
@@ -76,7 +65,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
     }
   }
 
-  const loadJobDetails = async () => {
+  const loadJobDetails = useCallback(async () => {
     try {
       setLoading(true)
       setError("")
@@ -102,9 +91,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
     } finally {
       setLoading(false)
     }
-  }
+  }, [resolvedParams.jobId])
 
-  const calculateFitmentScore = async () => {
+  const calculateFitmentScore = useCallback(async () => {
     if (!currentStudent || !job) return
 
     try {
@@ -192,7 +181,18 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
       console.error('Error calculating fitment score:', error)
       setFitmentScore(0)
     }
-  }
+  }, [currentStudent, job])
+
+  useEffect(() => {
+    loadJobDetails()
+    loadStudentFromSession()
+  }, [loadJobDetails])
+
+  useEffect(() => {
+    if (job && currentStudent) {
+      calculateFitmentScore()
+    }
+  }, [job, currentStudent, calculateFitmentScore])
 
   const getFitmentColor = (score: number) => {
     if (score >= 80) return "text-green-600"
