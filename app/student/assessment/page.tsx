@@ -350,7 +350,7 @@ export default function AssessmentPage() {
                 <div key={index} className="space-y-3">
                   <Label className="text-sm font-medium">{question}</Label>
                   <RadioGroup
-                    value={personalityScores[index]?.toString()}
+                    value={personalityScores[index]?.toString() || ""}
                     onValueChange={(value) =>
                       setPersonalityScores({
                         ...personalityScores,
